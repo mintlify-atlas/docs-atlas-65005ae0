@@ -1,0 +1,63 @@
+---
+title: "Introduction"
+description: "What the Dev Containers CLI is and how it fits into the Dev Containers ecosystem."
+---
+
+## What is a dev container?
+
+A development container lets you use a container as a full-featured development environment. Rather than installing tools, runtimes, and dependencies directly on your machine, you define them in a `devcontainer.json` file and run everything inside a container.
+
+Dev containers can be used to:
+
+- **Run your application** in an isolated, reproducible environment.
+- **Separate tools and runtimes** from your host system so team members get identical setups.
+- **Aid in continuous integration and testing** by running the same container in CI that you use locally.
+
+Dev containers can run locally or remotely, in private or public cloud environments.
+
+## What is the Dev Containers CLI?
+
+The Dev Containers CLI (`@devcontainers/cli`) is the reference implementation of the [Dev Containers specification](https://containers.dev/). It reads a `devcontainer.json` configuration file and creates, configures, and manages the container lifecycle from the command line.
+
+The CLI is published by Microsoft and is also the engine that powers the Dev Containers extension for VS Code and GitHub Codespaces.
+
+## Key use cases
+
+- **Local development** — spin up a fully configured environment on your machine with a single command.
+- **CI/CD pipelines** — run tests and build steps inside the same container used for development, eliminating environment drift.
+- **Pre-building images** — build and push dev container images ahead of time so containers start instantly.
+- **Authoring Features and Templates** — create, package, publish, and test reusable [Dev Container Features](https://containers.dev/implementors/features/) and [Templates](https://containers.dev/implementors/templates/).
+
+## How it relates to the specification
+
+The CLI implements the [Development Containers Specification](https://containers.dev/), which defines how `devcontainer.json` files are structured and how lifecycle commands, features, and environment variables are applied. Any tool that follows the spec — VS Code, GitHub Codespaces, JetBrains IDEs — produces and consumes the same configuration files.
+
+## Available commands
+
+| Command | Description |
+|---|---|
+| `up` | Create and run a dev container |
+| `build` | Build or pre-build a dev container image |
+| `exec` | Execute a command inside a running container |
+| `run-user-commands` | Run lifecycle commands such as `postCreateCommand` |
+| `set-up` | Set up an existing container as a dev container |
+| `read-configuration` | Output the resolved configuration for a workspace |
+| `outdated` | Show current and available Feature versions |
+| `upgrade` | Upgrade the Feature lockfile to latest versions |
+| `features` | Author, package, publish, and test Dev Container Features |
+| `templates` | Author, apply, publish, and test Dev Container Templates |
+
+<Note>
+  `devcontainer stop` and `devcontainer down` are planned but not yet implemented. Use `docker stop` and `docker rm` in the meantime.
+</Note>
+
+## Get started
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install the CLI via the install script, npm, or from source.
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Spin up your first dev container in under five minutes.
+  </Card>
+</CardGroup>

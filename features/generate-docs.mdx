@@ -1,0 +1,109 @@
+---
+title: "Generating Feature documentation"
+description: "Auto-generate markdown documentation for your Dev Container Features."
+---
+
+The `devcontainer features generate-docs` command reads each Feature's `devcontainer-feature.json` and writes a `README.md` into the same directory. Running this command as part of your CI pipeline keeps documentation in sync with Feature metadata automatically.
+
+## Usage
+
+```bash
+devcontainer features generate-docs \
+  --namespace my-org/my-features-repo \
+  --github-owner my-org \
+  --github-repo my-features-repo
+```
+
+The command iterates over every non-hidden subdirectory at the project root's `src/` folder (or the path provided by `--project-folder`), finds `devcontainer-feature.json` in each, and writes `README.md` alongside it.
+
+## Flags
+
+| Flag | Alias | Default | Description |
+|---|---|---|---|
+| `--project-folder` | `-p` | `.` | Path to the folder containing the `src` subdirectory. Typically the git root. |
+| `--namespace` | `-n` | — | **Required.** The OCI namespace for the collection (`<owner>/<repo>`). Used to build the example usage snippet in the README. |
+| `--registry` | `-r` | `ghcr.io` | OCI registry name. Used in the example usage snippet. |
+| `--github-owner` | — | `""` | GitHub owner. When provided alongside `--github-repo`, generates a link to the `devcontainer-feature.json` on GitHub. |
+| `--github-repo` | — | `""` | GitHub repository name. |
+| `--log-level` | — | `info` | One of `info`, `debug`, `trace`. |
+
+<Note>
+  If `--github-owner` and `--github-repo` are both set, the generated README links directly to the `devcontainer-feature.json` file on `github.com`. Otherwise, the link is the bare filename.
+</Note>
+
+## Generated README format
+
+Each `README.md` is generated from a standard template populated with fields from `devcontainer-feature.json`:
+
+````markdown src/my-feature/README.md
+# My Feature (my-feature)
+
+Installs my-tool and configures the environment.
+
+## Example Usage
+
+```json
+"features": {
+    "ghcr.io/my-org/my-features-repo/my-feature:1": {}
+}
+```
+
+## Options
+
+| Options Id | Description | Type | Default Value |
+|-----|-----|-----|-----|
+| version | Version of my-tool to install. | string | latest |
+
+## Customizations
+
+### VS Code Extensions
+
+- `my-publisher.my-extension`
+
+---
+
+_Note: This file was auto-generated from the [devcontainer-feature.json](https://github.com/my-org/my-features-repo/blob/main/src/my-feature/devcontainer-feature.json).  Add additional notes to a `NOTES.md`._
+````
+
+The version tag in the example usage snippet is derived from the major component of the Feature's `version` field (e.g. `1.2.3` → `:1`). If no version is present, `latest` is used.
+
+### Customizing with NOTES.md
+
+To add content that should appear in the README but cannot be expressed in `devcontainer-feature.json`, create a `NOTES.md` file in the Feature directory. Its contents are appended after the options table and customizations section.
+
+```
+src/
+└── my-feature/
+    ├── devcontainer-feature.json
+    ├── install.sh
+    └── NOTES.md          ← appended verbatim to the generated README
+```
+
+### Deprecated and legacy Features
+
+If `deprecated: true` is set in `devcontainer-feature.json`, the generated README prepends a bold deprecation notice. Similarly, any `legacyIds` values are called out at the top of the file.
+
+## Running in CI
+
+Add `generate-docs` to your CI workflow after any change to a `devcontainer-feature.json` to keep READMEs up to date. A typical GitHub Actions step:
+
+```yaml .github/workflows/release.yaml
+- name: Generate documentation
+  run: |
+    devcontainer features generate-docs \
+      --namespace ${{ github.repository }} \
+      --github-owner ${{ github.repository_owner }} \
+      --github-repo ${{ github.event.repository.name }}
+
+- name: Commit updated READMEs
+  run: |
+    git config user.name "github-actions[bot]"
+    git config user.email "github-actions[bot]@users.noreply.github.com"
+    git add src/*/README.md
+    git diff --cached --quiet || git commit -m "docs: regenerate Feature READMEs"
+    git push
+```
+
+<Tip>
+  Pin your CI workflow to a specific version of the Dev Containers CLI to avoid unexpected output changes when the template is updated.
+</Tip>

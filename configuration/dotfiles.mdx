@@ -1,0 +1,135 @@
+---
+title: "Dotfiles"
+description: "Automatically personalize your dev container with your dotfiles repository."
+---
+
+Dotfiles support lets you clone a personal Git repository into a dev container and run an install script, so your shell configuration, aliases, and editor settings follow you into every container automatically.
+
+## How it works
+
+<Steps>
+  <Step title="Clone the repository">
+    The CLI clones your dotfiles repository into the container at the path specified by `--dotfiles-target-path` (default: `~/dotfiles`).
+  </Step>
+  <Step title="Run the install script">
+    The CLI looks for an install script in the root of the cloned repository and runs it. The script is resolved by checking for the first of the following files that exists:
+
+    1. `install.sh`
+    2. `install`
+    3. `bootstrap.sh`
+    4. `bootstrap`
+    5. `setup.sh`
+    6. `setup`
+
+    You can override this with `--dotfiles-install-command`.
+  </Step>
+</Steps>
+
+<Note>
+  Dotfiles installation runs after `postCreateCommand` and is skipped when `--skip-post-create` is passed.
+</Note>
+
+## CLI flags
+
+Pass these flags to `devcontainer up` or `devcontainer run-user-commands`:
+
+<AccordionGroup>
+  <Accordion title="--dotfiles-repository" defaultOpen={true}>
+    The URL of the Git repository to clone.
+
+    ```bash
+    --dotfiles-repository https://github.com/myuser/dotfiles
+    ```
+
+    Any Git URL accepted by `git clone` works, including SSH URLs.
+  </Accordion>
+
+  <Accordion title="--dotfiles-install-command">
+    The command to run after cloning. If omitted, the CLI searches the repository root for the default install scripts listed above.
+
+    ```bash
+    --dotfiles-install-command "chmod +x install.sh && ./install.sh"
+    ```
+
+    The command runs from the repository root inside the container.
+  </Accordion>
+
+  <Accordion title="--dotfiles-target-path">
+    The path inside the container where the repository is cloned. Defaults to `~/dotfiles`.
+
+    ```bash
+    --dotfiles-target-path /home/vscode/.dotfiles
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Example usage
+
+```bash
+devcontainer up \
+  --workspace-folder . \
+  --dotfiles-repository https://github.com/myuser/dotfiles \
+  --dotfiles-install-command "install.sh" \
+  --dotfiles-target-path ~/dotfiles
+```
+
+## Setting dotfiles in devcontainer.json
+
+Some tools that wrap the CLI pass dotfiles configuration through their own settings UI rather than CLI flags. If you need to commit dotfiles configuration alongside a project, you can place it in `devcontainer.json` under `customizations`:
+
+```json devcontainer.json
+{
+  "name": "My Dev Container",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "customizations": {
+    "dotfiles": {
+      "repository": "https://github.com/myuser/dotfiles",
+      "installCommand": "install.sh",
+      "targetPath": "~/dotfiles"
+    }
+  }
+}
+```
+
+<Warning>
+  Committing a personal dotfiles repository URL in a shared `devcontainer.json` applies your personal configuration to everyone who uses that container. Prefer passing `--dotfiles-repository` as a user-level or machine-level setting in your tool's configuration instead.
+</Warning>
+
+## Writing an idempotent install script
+
+The install script may run more than once if the container is rebuilt. Write it so it is safe to run repeatedly.
+
+<Tip>
+  Check whether a symlink or file already exists before creating it. Use `ln -sf` (force) or guard with `[ -f ]` checks.
+</Tip>
+
+```bash install.sh
+#!/usr/bin/env bash
+set -euo pipefail
+
+DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+link() {
+  local src="$DOTFILES_DIR/$1"
+  local dst="$HOME/$2"
+  mkdir -p "$(dirname "$dst")"
+  ln -sf "$src" "$dst"
+  echo "Linked $dst -> $src"
+}
+
+link "zshrc"        ".zshrc"
+link "gitconfig"    ".gitconfig"
+link "config/nvim"  ".config/nvim"
+
+# Install tools only if not already present
+if ! command -v starship &>/dev/null; then
+  curl -sS https://starship.rs/install.sh | sh -s -- --yes
+fi
+```
+
+Key practices:
+
+- Use `ln -sf` so existing symlinks are overwritten without error.
+- Guard network installs with `command -v` or file existence checks.
+- Use `set -euo pipefail` so the script fails fast on errors.
+- Avoid hardcoding paths; derive them from `$HOME` or the script's own directory.

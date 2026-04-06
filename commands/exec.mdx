@@ -1,0 +1,129 @@
+---
+title: "devcontainer exec"
+description: "Execute a command on a running dev container."
+---
+
+The `exec` command runs an arbitrary command inside an already-running dev container. It resolves the container by workspace folder, container ID, or id-labels, then executes the given command with the remote user's environment applied.
+
+Use `exec` to run builds, tests, or any shell command in the same environment your dev container provides, without opening an interactive shell.
+
+## Usage
+
+```bash
+devcontainer exec [options] <cmd> [args..]
+```
+
+`<cmd>` and any following `[args..]` are passed directly to the container.
+
+## Options
+
+### Container identification
+
+<ParamField query="--workspace-folder" type="string">
+  Workspace folder path. The `devcontainer.json` will be looked up relative to this path. If `--container-id`, `--id-label`, and `--workspace-folder` are not provided, this defaults to the current directory.
+</ParamField>
+
+<ParamField query="--container-id" type="string">
+  Id of the container to run the user commands for.
+</ParamField>
+
+<ParamField query="--id-label" type="string">
+  Id label(s) of the format `name=value`. If no `--container-id` is given the id labels will be used to look up the container. If no `--id-label` is given, one will be inferred from the `--workspace-folder` path.
+</ParamField>
+
+### Configuration
+
+<ParamField query="--config" type="string">
+  `devcontainer.json` path. The default is to use `.devcontainer/devcontainer.json` or, if that does not exist, `.devcontainer.json` in the workspace folder.
+</ParamField>
+
+<ParamField query="--override-config" type="string">
+  `devcontainer.json` path to override any `devcontainer.json` in the workspace folder (or built-in configuration). This is required when there is no `devcontainer.json` otherwise.
+</ParamField>
+
+### Environment
+
+<ParamField query="--remote-env" type="string">
+  Remote environment variables of the format `name=value`. These will be added when executing the user commands. Can be specified multiple times.
+</ParamField>
+
+<ParamField query="--default-user-env-probe" type="string" default="loginInteractiveShell">
+  Default value for the `devcontainer.json`'s `"userEnvProbe"`. Accepted values: `none`, `loginInteractiveShell`, `interactiveShell`, `loginShell`.
+</ParamField>
+
+### Docker
+
+<ParamField query="--docker-path" type="string">
+  Docker CLI path.
+</ParamField>
+
+<ParamField query="--docker-compose-path" type="string">
+  Docker Compose CLI path.
+</ParamField>
+
+### Logging
+
+<ParamField query="--log-level" type="string" default="info">
+  Log level for the terminal log file. When set to `trace`, the log level for the log file will also be set to `trace`. Accepted values: `info`, `debug`, `trace`.
+</ParamField>
+
+<ParamField query="--log-format" type="string" default="text">
+  Log format. Accepted values: `text`, `json`.
+</ParamField>
+
+## Examples
+
+### Run a build command
+
+```bash
+devcontainer exec --workspace-folder . cargo build --release
+```
+
+### Run tests
+
+```bash
+devcontainer exec --workspace-folder . npm test
+```
+
+### Open an interactive shell
+
+```bash
+devcontainer exec --workspace-folder . bash
+```
+
+### Target a container by ID
+
+```bash
+devcontainer exec --container-id abc123def456 go test ./...
+```
+
+### Target a container using id-labels
+
+```bash
+devcontainer exec \
+  --id-label devcontainer.local_folder=/home/user/my-project \
+  pytest tests/
+```
+
+### Pass extra environment variables
+
+```bash
+devcontainer exec \
+  --workspace-folder . \
+  --remote-env CI=true \
+  --remote-env BUILD_NUMBER=42 \
+  make all
+```
+
+### Use a custom config path
+
+```bash
+devcontainer exec \
+  --workspace-folder . \
+  --config .devcontainer/ci.devcontainer.json \
+  ./scripts/validate.sh
+```
+
+<Tip>
+  The exit code of `exec` mirrors the exit code of the command you ran inside the container, so it integrates naturally with CI pipelines.
+</Tip>

@@ -1,28 +1,11 @@
 {
-  "$schema": "https://mintlify.com/docs.json",
-  "name": "Dev Containers CLI",
+  "projectType": "cli-tool",
+  "projectName": "Dev Containers CLI",
+  "projectDescription": "A reference CLI implementation for the Dev Containers specification that creates, configures, and manages development containers from devcontainer.json files.",
   "theme": "aspen",
-  "colors": {
-    "primary": "#0490ef",
-    "light": "#0c5c8c",
-    "dark": "#1c1d1e"
-  },
-  "favicon": "https://media.brand.dev/e65187c8-c68d-42ed-b987-a2d6d13da1b2.png",
-  "logo": {
-    "light": "https://media.brand.dev/4d7e974e-af6e-4bda-918d-03128aacbb98.png",
-    "dark": "https://media.brand.dev/4d7e974e-af6e-4bda-918d-03128aacbb98.png"
-  },
-  "navbar": {
-    "primary": {
-      "type": "github",
-      "href": "https://github.com/devcontainers/cli"
-    }
-  },
-  "footer": {
-    "socials": {
-      "github": "https://github.com/devcontainers/cli"
-    }
-  },
+  "primaryColor": "#0490ef",
+  "lightColor": "#0c5c8c",
+  "darkColor": "#1c1d1e",
   "navigation": {
     "tabs": [
       {
@@ -97,5 +80,36 @@
         ]
       }
     ]
-  }
+  },
+  "keyFeatures": [
+    "Create and run dev containers from devcontainer.json with `devcontainer up`",
+    "Build and pre-build container images with Features support",
+    "Execute commands inside running containers with proper env/user settings",
+    "Author, test, package, and publish Dev Container Features",
+    "Author and publish Dev Container Templates",
+    "Docker Compose multi-container support",
+    "Dotfiles repository integration for personalization",
+    "OCI registry support for distributing Features and Templates",
+    "Lockfile support for reproducible environments"
+  ],
+  "publicApiSurface": [
+    "devcontainer up",
+    "devcontainer build",
+    "devcontainer exec",
+    "devcontainer read-configuration",
+    "devcontainer run-user-commands",
+    "devcontainer set-up",
+    "devcontainer outdated",
+    "devcontainer upgrade",
+    "devcontainer features test",
+    "devcontainer features package",
+    "devcontainer features publish",
+    "devcontainer features info",
+    "devcontainer features resolve-dependencies",
+    "devcontainer features generate-docs",
+    "devcontainer templates apply",
+    "devcontainer templates publish",
+    "devcontainer templates metadata",
+    "devcontainer templates generate-docs"
+  ]
 }

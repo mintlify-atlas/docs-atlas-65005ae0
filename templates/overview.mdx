@@ -1,0 +1,95 @@
+---
+title: "Dev Container Templates"
+description: "Bootstrap new projects with pre-configured Dev Container Templates."
+---
+
+Dev Container Templates are pre-built, shareable configurations that scaffold an entire development environment for a specific language, framework, or stack. Applying a template writes a `.devcontainer/` folder — including `devcontainer.json` and any supporting files such as a `Dockerfile` — directly into your project.
+
+## What is a template?
+
+A template bundles everything needed to open a project in a container:
+
+- A `devcontainer.json` with the correct image, mounts, extensions, and settings for the target stack.
+- Optional supporting files such as a `Dockerfile` or `docker-compose.yml`.
+- A `devcontainer-template.json` manifest that describes the template, declares user-configurable options, and provides versioning metadata.
+
+When you apply a template, the CLI pulls the artifact from an OCI registry, substitutes any option values you supply, and writes the resulting files into your workspace.
+
+## Templates vs. Features
+
+Templates and Features both extend Dev Containers, but they serve different purposes.
+
+| | Templates | Features |
+|---|---|---|
+| **Purpose** | Scaffold a new project from scratch | Add tools or runtimes to an existing container |
+| **Scope** | Replaces or creates `.devcontainer/` | Modifies `devcontainer.json` features field |
+| **When to use** | Starting a new repo | Extending an existing configuration |
+
+A template gives you a starting point. A feature adds something — a CLI tool, a language runtime, a service — on top of that starting point.
+
+## Template structure
+
+Each template lives in its own directory and follows this layout:
+
+<Tree>
+  <Tree.Folder name="src" defaultOpen>
+    <Tree.Folder name="my-template" defaultOpen>
+      <Tree.File name="devcontainer-template.json" />
+      <Tree.Folder name=".devcontainer" defaultOpen>
+        <Tree.File name="devcontainer.json" />
+        <Tree.File name="Dockerfile" />
+      </Tree.Folder>
+    </Tree.Folder>
+  </Tree.Folder>
+</Tree>
+
+The `devcontainer-template.json` manifest declares the template's ID, version, human-readable name, description, and any user-configurable options:
+
+```json devcontainer-template.json
+{
+  "id": "python",
+  "version": "1.0.0",
+  "name": "Python 3",
+  "description": "A Python 3 environment.",
+  "options": {
+    "imageVariant": {
+      "type": "string",
+      "description": "Python version",
+      "proposals": ["3.12", "3.11", "3.10"],
+      "default": "3.12"
+    }
+  }
+}
+```
+
+Option values you pass at apply time are substituted into the `.devcontainer/` files before they are written to disk. Any option you omit receives the `default` value declared in the manifest.
+
+## Community template registry
+
+The community maintains a public index of templates at [containers.dev/templates](https://containers.dev/templates). Templates listed there are published to `ghcr.io/devcontainers/templates` and can be applied directly with the CLI.
+
+## Available subcommands
+
+The `devcontainer templates` group provides four subcommands:
+
+| Subcommand | Description |
+|---|---|
+| `apply` | Download and apply a template to a workspace folder |
+| `publish` | Package and publish templates to an OCI registry |
+| `metadata` | Fetch the metadata manifest for a published template |
+| `generate-docs` | Auto-generate README documentation for a template collection |
+
+```bash
+devcontainer templates apply \
+  --template-id ghcr.io/devcontainers/templates/python:latest \
+  --workspace-folder .
+```
+
+<Columns cols={2}>
+  <Card title="Applying templates" icon="download" href="/templates/apply">
+    Apply a template from an OCI registry to scaffold a new project.
+  </Card>
+  <Card title="Publishing templates" icon="upload" href="/templates/publish">
+    Package and publish your own templates to share with others.
+  </Card>
+</Columns>

@@ -1,0 +1,155 @@
+---
+title: "Environment variables"
+description: "Environment variables available inside dev containers and how to configure them."
+---
+
+Dev containers provide several ways to set and propagate environment variables, from static values in `devcontainer.json` to dynamic substitution from the host environment.
+
+## Container environment variables
+
+### containerEnv
+
+`containerEnv` sets environment variables on the container process at creation time. Every process running in the container — including long-running services — sees these values.
+
+```json devcontainer.json
+{
+  "containerEnv": {
+    "NODE_ENV": "development",
+    "PORT": "3000"
+  }
+}
+```
+
+Values are passed to `docker run --env` and are also stored in image metadata.
+
+<Warning>
+  Because `containerEnv` values are stored in image metadata, do not use this property for secrets or credentials. Use the `--secrets-file` CLI flag instead.
+</Warning>
+
+### remoteEnv
+
+`remoteEnv` sets environment variables that the CLI injects into lifecycle script executions and remote tool sessions (such as integrated terminals). These variables are layered on top of the container's environment; they are not set at the Docker level and do not affect services started independently inside the container.
+
+```json devcontainer.json
+{
+  "remoteEnv": {
+    "PATH": "${containerEnv:PATH}:/home/user/.local/bin",
+    "LOCAL_HOME": "${localEnv:HOME}",
+    "WORKSPACE": "${containerWorkspaceFolder}"
+  }
+}
+```
+
+Setting a key to `null` unsets the variable:
+
+```json devcontainer.json
+{
+  "remoteEnv": {
+    "UNWANTED_VAR": null
+  }
+}
+```
+
+## Variable substitution
+
+Both `containerEnv` and `remoteEnv` (as well as several other string-valued properties in `devcontainer.json`) support variable substitution using the `${variable}` syntax.
+
+<AccordionGroup>
+  <Accordion title="Host environment — ${localEnv:NAME}">
+    Reads the variable `NAME` from the host (local) environment at the time the CLI processes the configuration.
+
+    ```json
+    { "remoteEnv": { "HOST_USER": "${localEnv:USER}" } }
+    ```
+
+    <Tip>If the variable is not set on the host, the substitution resolves to an empty string.</Tip>
+  </Accordion>
+
+  <Accordion title="Container environment — ${containerEnv:NAME}">
+    Reads the variable `NAME` from the running container's environment. Only valid in `remoteEnv`, where the container is already running when the substitution is evaluated.
+
+    ```json
+    {
+      "remoteEnv": {
+        "PATH": "${containerEnv:PATH}:/usr/local/mytools/bin"
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Workspace paths">
+    | Pattern | Resolves to |
+    |---|---|
+    | `${localWorkspaceFolder}` | Absolute path to the workspace folder on the **host** |
+    | `${containerWorkspaceFolder}` | Absolute path to the workspace folder **inside the container** |
+    | `${localWorkspaceFolderBasename}` | The base name (last path segment) of the workspace folder on the host |
+
+    ```json
+    {
+      "remoteEnv": {
+        "PROJECT_ROOT": "${containerWorkspaceFolder}",
+        "PROJECT_NAME": "${localWorkspaceFolderBasename}"
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## userEnvProbe
+
+The `userEnvProbe` property controls how the CLI determines the remote user's shell environment — particularly the `PATH` — when entering the container. The CLI runs a short-lived shell using the specified invocation style and captures the resulting environment.
+
+```json devcontainer.json
+{
+  "userEnvProbe": "loginInteractiveShell"
+}
+```
+
+| Value | Shell invocation | Profile files sourced |
+|---|---|---|
+| `none` | No shell launched | None |
+| `loginInteractiveShell` | `bash --login -i` | `/etc/profile`, `~/.bash_profile`, `~/.bashrc` |
+| `interactiveShell` | `bash -i` | `~/.bashrc` |
+| `loginShell` | `bash --login` | `/etc/profile`, `~/.bash_profile` |
+
+The default value is `loginInteractiveShell`, which sources the broadest set of profile files and produces an environment closest to an interactive login session.
+
+<Note>
+  Tools can override the default with the `--default-user-env-probe` CLI flag when invoking `devcontainer up`, `set-up`, or `run-user-commands`.
+</Note>
+
+## Remote environment via CLI flags
+
+You can inject additional remote environment variables at runtime without modifying `devcontainer.json` by using the `--remote-env` flag on the `up`, `set-up`, and `run-user-commands` commands.
+
+```bash
+devcontainer up --workspace-folder . \
+  --remote-env MY_TOKEN=abc123 \
+  --remote-env DEBUG=true
+```
+
+The format is `NAME=VALUE`. Pass the flag multiple times to set multiple variables. These variables are added to the same layer as `remoteEnv` from `devcontainer.json` and are not stored in image metadata.
+
+<Note>The value may be empty: `--remote-env EMPTY_VAR=` is valid.</Note>
+
+## Secrets
+
+The `--secrets-file` flag on `up` and `run-user-commands` loads secret environment variables from a JSON file. Secrets are injected into lifecycle scripts and remote sessions in the same way as `remoteEnv`, but they are **never stored in container or image metadata**.
+
+```bash
+devcontainer up --workspace-folder . --secrets-file ./secrets.json
+```
+
+The secrets file must be a flat JSON object of string key-value pairs:
+
+```json secrets.json
+{
+  "NPM_TOKEN": "npm_xxxxxxxxxxxx",
+  "DATABASE_URL": "postgres://user:pass@localhost/mydb",
+  "API_KEY": "sk-xxxxxxxxxxxx"
+}
+```
+
+<Warning>
+  Keep your secrets file out of source control. Add it to `.gitignore` and never commit it to your repository.
+</Warning>

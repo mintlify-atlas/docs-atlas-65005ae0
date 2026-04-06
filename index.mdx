@@ -1,97 +1,82 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Dev Containers CLI"
+description: "Create and manage development containers from devcontainer.json. The reference CLI implementation for the Dev Containers specification."
 ---
 
-## Setting up
+The Dev Containers CLI lets you build, run, and work inside containerized development environments defined by a `devcontainer.json` file. Use it in CI pipelines, local development, or anywhere you need reproducible, portable dev environments.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install via npm, the standalone install script, or build from source.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Spin up your first dev container in under five minutes.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Core Commands" icon="terminal" href="/commands/up">
+    Explore `up`, `build`, `exec`, and more.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Configuration Reference" icon="file-code" href="/reference/devcontainer-json-properties">
+    Full reference for all `devcontainer.json` properties.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## What you can do
 
-Everything you need to create world-class documentation.
+<CardGroup cols={2}>
+  <Card title="Run dev containers" icon="play" href="/commands/up">
+    Use `devcontainer up` to create and start a container from any `devcontainer.json`.
+  </Card>
+  <Card title="Build images" icon="box" href="/commands/build">
+    Pre-build container images with `devcontainer build` for faster startup.
+  </Card>
+  <Card title="Execute commands" icon="code" href="/commands/exec">
+    Run commands inside a container with the correct user, environment, and working directory.
+  </Card>
+  <Card title="Use Features" icon="puzzle-piece" href="/features/overview">
+    Add tools and runtimes to any container with Dev Container Features.
+  </Card>
+  <Card title="Apply Templates" icon="copy" href="/templates/overview">
+    Bootstrap new projects using community Dev Container Templates.
+  </Card>
+  <Card title="Dotfiles support" icon="gear" href="/configuration/dotfiles">
+    Personalize containers automatically with your dotfiles repository.
+  </Card>
+</CardGroup>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+## Get started
 
-## Need inspiration?
+<Steps>
+  <Step title="Install the CLI">
+    Install `@devcontainers/cli` globally via npm or use the standalone install script:
+    ```bash
+    npm install -g @devcontainers/cli
+    ```
+  </Step>
+  <Step title="Add a devcontainer.json">
+    Create a `.devcontainer/devcontainer.json` in your project:
+    ```json
+    {
+      "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+      "features": {
+        "ghcr.io/devcontainers/features/node:1": {}
+      }
+    }
+    ```
+  </Step>
+  <Step title="Start the container">
+    Run `devcontainer up` in your project directory:
+    ```bash
+    devcontainer up --workspace-folder .
+    ```
+  </Step>
+  <Step title="Execute commands inside">
+    Run tools or scripts inside the running container:
+    ```bash
+    devcontainer exec --workspace-folder . node --version
+    ```
+  </Step>
+</Steps>
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<Note>
+  The Dev Containers CLI is part of the [Development Containers Specification](https://containers.dev/). It works with Docker, Docker Compose, and supports the full `devcontainer.json` configuration surface.
+</Note>

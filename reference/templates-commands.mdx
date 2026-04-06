@@ -1,0 +1,126 @@
+---
+title: "devcontainer templates"
+description: "Complete reference for all devcontainer templates subcommands."
+---
+
+The `devcontainer templates` group of commands provides tooling to apply, package, publish, and inspect dev container Templates.
+
+## Subcommands
+
+<AccordionGroup>
+
+  <Accordion title="templates apply">
+    Apply a Template to the current project.
+
+    ```bash
+    devcontainer templates apply [options]
+    ```
+
+    <ParamField query="workspace-folder" type="string">
+      Target workspace folder to apply Template. If `--workspace-folder` is not provided, this defaults to the current directory. Alias: `-w`.
+    </ParamField>
+
+    <ParamField query="template-id" type="string" required>
+      Reference to a Template in a supported OCI registry. Alias: `-t`.
+    </ParamField>
+
+    <ParamField query="template-args" type="string" default="{}">
+      Arguments to replace within the provided Template, provided as JSON. Alias: `-a`.
+    </ParamField>
+
+    <ParamField query="features" type="string" default="[]">
+      Features to add to the provided Template, provided as JSON. Alias: `-f`.
+    </ParamField>
+
+    <ParamField query="log-level" type="string" default="info">
+      Log level. Choices: `info`, `debug`, `trace`.
+    </ParamField>
+
+    <ParamField query="tmp-dir" type="string">
+      Directory to use for temporary files. If not provided, the system default will be inferred.
+    </ParamField>
+
+    <ParamField query="omit-paths" type="string" default="[]">
+      List of paths within the Template to omit applying, provided as JSON. To ignore a directory append `/*`. Example: `[".github/*", "dir/a/*", "file.ts"]`.
+    </ParamField>
+
+    On success the command writes the applied file paths to stdout:
+
+    ```json
+    { "files": ["<relative-path>", ...] }
+    ```
+  </Accordion>
+
+  <Accordion title="templates publish <target>">
+    Package and publish Templates to an OCI registry.
+
+    ```bash
+    devcontainer templates publish <target> [options]
+    ```
+
+    <ParamField path="target" type="string" default=".">
+      Package and publish templates at provided `[target]` (default is cwd), where `[target]` is either:
+      1. A path to the `src` folder of the collection with one or more templates.
+      2. A path to a single template that contains a `devcontainer-template.json`.
+    </ParamField>
+
+    <ParamField query="registry" type="string" default="ghcr.io">
+      Name of the OCI registry. Alias: `-r`.
+    </ParamField>
+
+    <ParamField query="namespace" type="string" required>
+      Unique identifier for the collection of templates. Example: `<owner>/<repo>`. Alias: `-n`.
+    </ParamField>
+
+    <ParamField query="log-level" type="string" default="info">
+      Log level. Choices: `info`, `debug`, `trace`.
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="templates metadata <templateId>">
+    Fetch a published Template's metadata from its OCI manifest.
+
+    ```bash
+    devcontainer templates metadata <templateId> [options]
+    ```
+
+    <ParamField path="templateId" type="string" required>
+      Template identifier (e.g., `ghcr.io/devcontainers/templates/debian:latest`).
+    </ParamField>
+
+    <ParamField query="log-level" type="string" default="info">
+      Log level. Choices: `info`, `debug`, `trace`.
+    </ParamField>
+
+    <Warning>
+      Templates must have been published with a CLI version from after [this commit](https://github.com/devcontainers/cli/commit/6c6aebfa7b74aea9d67760fd1e74b09573d31536) to contain attached metadata in the manifest. Ask the Template owner to republish if metadata is missing.
+    </Warning>
+
+    On success the command writes the template metadata JSON to stdout.
+  </Accordion>
+
+  <Accordion title="templates generate-docs">
+    Generate documentation for a Template collection.
+
+    ```bash
+    devcontainer templates generate-docs [options]
+    ```
+
+    <ParamField query="project-folder" type="string" default=".">
+      Path to folder containing `src` and `test` sub-folders. This is likely the git root of the project. Alias: `-p`.
+    </ParamField>
+
+    <ParamField query="github-owner" type="string" default="">
+      GitHub owner for docs.
+    </ParamField>
+
+    <ParamField query="github-repo" type="string" default="">
+      GitHub repo for docs.
+    </ParamField>
+
+    <ParamField query="log-level" type="string" default="info">
+      Log level. Choices: `info`, `debug`, `trace`.
+    </ParamField>
+  </Accordion>
+
+</AccordionGroup>

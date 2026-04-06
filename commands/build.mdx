@@ -1,0 +1,191 @@
+---
+title: "devcontainer build"
+description: "Build a dev container image."
+---
+
+The `build` command builds the Docker image for a dev container without starting a container. It processes `devcontainer.json`, applies any configured features, and produces a tagged image you can push to a registry or reuse across environments.
+
+This is useful in CI/CD pipelines to prebuild images and speed up container startup times.
+
+## Usage
+
+```bash
+devcontainer build [path] [options]
+```
+
+The optional `path` positional argument sets the workspace folder directly.
+
+## Options
+
+### Workspace and configuration
+
+<ParamField query="--workspace-folder" type="string">
+  Workspace folder path. The `devcontainer.json` will be looked up relative to this path. If not provided, defaults to the current directory.
+</ParamField>
+
+<ParamField query="--config" type="string">
+  `devcontainer.json` path. The default is to use `.devcontainer/devcontainer.json` or, if that does not exist, `.devcontainer.json` in the workspace folder.
+</ParamField>
+
+<ParamField query="--additional-features" type="string">
+  Additional features to apply to the dev container (JSON as per `"features"` section in `devcontainer.json`).
+</ParamField>
+
+### Image naming
+
+<ParamField query="--image-name" type="string">
+  Image name. Can be specified multiple times to tag the image with multiple names.
+</ParamField>
+
+<ParamField query="--label" type="string">
+  Provide key and value configuration that adds metadata to an image. Can be specified multiple times.
+</ParamField>
+
+### Build behavior
+
+<ParamField query="--no-cache" type="boolean" default="false">
+  Builds the image with `--no-cache`.
+</ParamField>
+
+<ParamField query="--buildkit" type="string" default="auto">
+  Control whether BuildKit should be used. Accepted values: `auto`, `never`.
+</ParamField>
+
+<ParamField query="--platform" type="string">
+  Set target platforms (e.g., `linux/amd64,linux/arm64`). Requires BuildKit.
+</ParamField>
+
+### Caching
+
+<ParamField query="--cache-from" type="string">
+  Additional image to use as potential layer cache. Can be specified multiple times.
+</ParamField>
+
+<ParamField query="--cache-to" type="string">
+  A destination of buildx cache.
+</ParamField>
+
+### Registry
+
+<ParamField query="--push" type="boolean" default="false">
+  Push to a container registry.
+</ParamField>
+
+<ParamField query="--output" type="string">
+  Overrides the default behavior to load built images into the local Docker registry. Valid options are the same ones provided to the `--output` option of `docker buildx build`.
+</ParamField>
+
+### Logging
+
+<ParamField query="--log-level" type="string" default="info">
+  Log level. Accepted values: `info`, `debug`, `trace`.
+</ParamField>
+
+<ParamField query="--log-format" type="string" default="text">
+  Log format. Accepted values: `text`, `json`.
+</ParamField>
+
+## Output
+
+On success, the command writes a JSON object to stdout:
+
+```json
+{
+  "outcome": "success",
+  "imageName": ["ghcr.io/myorg/my-devcontainer:latest"]
+}
+```
+
+On failure:
+
+```json
+{
+  "outcome": "error",
+  "message": "An error occurred building the container.",
+  "description": "..."
+}
+```
+
+## Examples
+
+### Build the image for the current workspace
+
+```bash
+devcontainer build --workspace-folder .
+```
+
+### Build and tag with a specific name
+
+```bash
+devcontainer build \
+  --workspace-folder . \
+  --image-name ghcr.io/myorg/my-devcontainer:latest
+```
+
+### Build for multiple platforms
+
+<Note>
+  Multi-platform builds require Docker BuildKit and a configured buildx builder.
+</Note>
+
+```bash
+devcontainer build \
+  --workspace-folder . \
+  --platform linux/amd64,linux/arm64 \
+  --image-name ghcr.io/myorg/my-devcontainer:latest
+```
+
+### Build and push to a registry in one step
+
+```bash
+devcontainer build \
+  --workspace-folder . \
+  --image-name ghcr.io/myorg/my-devcontainer:latest \
+  --push
+```
+
+### Build without cache
+
+```bash
+devcontainer build \
+  --workspace-folder . \
+  --no-cache \
+  --image-name ghcr.io/myorg/my-devcontainer:latest
+```
+
+### Use a cache source to speed up CI builds
+
+```bash
+devcontainer build \
+  --workspace-folder . \
+  --cache-from ghcr.io/myorg/my-devcontainer:cache \
+  --image-name ghcr.io/myorg/my-devcontainer:latest
+```
+
+### Export the image to a tarball instead of loading it locally
+
+```bash
+devcontainer build \
+  --workspace-folder . \
+  --output type=tar,dest=./devcontainer-image.tar \
+  --image-name my-devcontainer
+```
+
+### Apply additional features at build time
+
+```bash
+devcontainer build \
+  --workspace-folder . \
+  --additional-features '{"ghcr.io/devcontainers/features/python:1": {"version": "3.12"}}' \
+  --image-name ghcr.io/myorg/my-devcontainer:py312
+```
+
+### Add image labels
+
+```bash
+devcontainer build \
+  --workspace-folder . \
+  --label org.opencontainers.image.source=https://github.com/myorg/myrepo \
+  --label org.opencontainers.image.version=1.0.0 \
+  --image-name ghcr.io/myorg/my-devcontainer:latest
+```

@@ -1,0 +1,265 @@
+---
+title: "devcontainer up"
+description: "Create and run a dev container."
+---
+
+The `up` command creates and starts a dev container based on your `devcontainer.json` configuration. It provisions the container, installs features, and runs lifecycle commands such as `onCreateCommand`, `postCreateCommand`, and `postStartCommand`.
+
+If a container already exists for the given workspace, `up` reuses it unless you pass `--remove-existing-container`.
+
+## Usage
+
+```bash
+devcontainer up [options]
+```
+
+## Options
+
+### Workspace and configuration
+
+<ParamField query="--workspace-folder" type="string">
+  Workspace folder path. The `devcontainer.json` will be looked up relative to this path. If `--id-label`, `--override-config`, and `--workspace-folder` are not provided, this defaults to the current directory.
+</ParamField>
+
+<ParamField query="--config" type="string">
+  `devcontainer.json` path. The default is to use `.devcontainer/devcontainer.json` or, if that does not exist, `.devcontainer.json` in the workspace folder.
+</ParamField>
+
+<ParamField query="--override-config" type="string">
+  `devcontainer.json` path to override any `devcontainer.json` in the workspace folder (or built-in configuration). This is required when there is no `devcontainer.json` otherwise.
+</ParamField>
+
+<ParamField query="--id-label" type="string">
+  Id label(s) of the format `name=value`. These will be set on the container and used to query for an existing container. If no `--id-label` is given, one will be inferred from the `--workspace-folder` path.
+</ParamField>
+
+<ParamField query="--additional-features" type="string">
+  Additional features to apply to the dev container (JSON as per `"features"` section in `devcontainer.json`).
+</ParamField>
+
+### Docker
+
+<ParamField query="--docker-path" type="string">
+  Docker CLI path.
+</ParamField>
+
+<ParamField query="--docker-compose-path" type="string">
+  Docker Compose CLI path.
+</ParamField>
+
+### Container lifecycle
+
+<ParamField query="--remove-existing-container" type="boolean" default="false">
+  Removes the dev container if it already exists.
+</ParamField>
+
+<ParamField query="--expect-existing-container" type="boolean" default="false">
+  Fail if the container does not exist.
+</ParamField>
+
+<ParamField query="--build-no-cache" type="boolean" default="false">
+  Builds the image with `--no-cache` if the container does not exist.
+</ParamField>
+
+<ParamField query="--skip-post-create" type="boolean" default="false">
+  Do not run `onCreateCommand`, `updateContentCommand`, `postCreateCommand`, `postStartCommand` or `postAttachCommand` and do not install dotfiles.
+</ParamField>
+
+<ParamField query="--skip-non-blocking-commands" type="boolean" default="false">
+  Stop running user commands after running the command configured with `waitFor` or the `updateContentCommand` by default.
+</ParamField>
+
+<ParamField query="--skip-post-attach" type="boolean" default="false">
+  Do not run `postAttachCommand`.
+</ParamField>
+
+<ParamField query="--prebuild" type="boolean" default="false">
+  Stop after `onCreateCommand` and `updateContentCommand`, rerunning `updateContentCommand` if it has run before.
+</ParamField>
+
+<ParamField query="--update-remote-user-uid-default" type="string" default="on">
+  Default for updating the remote user's UID and GID to the local user's one. Accepted values: `never`, `on`, `off`.
+</ParamField>
+
+### Mounts and environment
+
+<ParamField query="--mount" type="string">
+  Additional mount point(s). Format: `type=<bind|volume>,source=<source>,target=<target>[,external=<true|false>]`. Can be specified multiple times.
+</ParamField>
+
+<ParamField query="--remote-env" type="string">
+  Remote environment variables of the format `name=value`. These will be added when executing the user commands. Can be specified multiple times.
+</ParamField>
+
+### Image caching
+
+<ParamField query="--cache-from" type="string">
+  Additional image to use as potential layer cache during image building. Can be specified multiple times.
+</ParamField>
+
+<ParamField query="--cache-to" type="string">
+  Additional image to use as potential layer cache during image building.
+</ParamField>
+
+<ParamField query="--buildkit" type="string" default="auto">
+  Control whether BuildKit should be used. Accepted values: `auto`, `never`.
+</ParamField>
+
+### Dotfiles
+
+<ParamField query="--dotfiles-repository" type="string">
+  URL of a dotfiles Git repository (e.g., `https://github.com/owner/repository.git`).
+</ParamField>
+
+<ParamField query="--dotfiles-install-command" type="string">
+  The command to run after cloning the dotfiles repository. Defaults to run the first file of `install.sh`, `install`, `bootstrap.sh`, `bootstrap`, `setup.sh` and `setup` found in the dotfiles repository's root folder.
+</ParamField>
+
+<ParamField query="--dotfiles-target-path" type="string" default="~/dotfiles">
+  The path to clone the dotfiles repository to. Defaults to `~/dotfiles`.
+</ParamField>
+
+### Secrets
+
+<ParamField query="--secrets-file" type="string">
+  Path to a JSON file containing secret environment variables as key-value pairs.
+</ParamField>
+
+### Output and logging
+
+<ParamField query="--include-configuration" type="boolean" default="false">
+  Include configuration in result.
+</ParamField>
+
+<ParamField query="--include-merged-configuration" type="boolean" default="false">
+  Include merged configuration in result.
+</ParamField>
+
+<ParamField query="--log-level" type="string" default="info">
+  Log level for the terminal log file. When set to `trace`, the log level for the log file will also be set to `trace`. Accepted values: `info`, `debug`, `trace`.
+</ParamField>
+
+<ParamField query="--log-format" type="string" default="text">
+  Log format. Accepted values: `text`, `json`.
+</ParamField>
+
+## Output
+
+On success, the command writes a JSON object to stdout:
+
+```json
+{
+  "outcome": "success",
+  "containerId": "abc123def456...",
+  "remoteUser": "vscode",
+  "remoteWorkspaceFolder": "/workspaces/my-project"
+}
+```
+
+On failure, it writes:
+
+```json
+{
+  "outcome": "error",
+  "message": "An error occurred setting up the container.",
+  "description": "..."
+}
+```
+
+## Examples
+
+### Start a dev container in the current directory
+
+```bash
+devcontainer up --workspace-folder .
+```
+
+### Use a custom config file
+
+```bash
+devcontainer up --workspace-folder . --config ./custom/.devcontainer.json
+```
+
+### Add an extra bind mount
+
+```bash
+devcontainer up \
+  --workspace-folder . \
+  --mount type=bind,source=/host/data,target=/container/data
+```
+
+### Pass remote environment variables
+
+```bash
+devcontainer up \
+  --workspace-folder . \
+  --remote-env MY_VAR=hello \
+  --remote-env ANOTHER_VAR=world
+```
+
+### Rebuild without cache and remove any existing container
+
+```bash
+devcontainer up \
+  --workspace-folder . \
+  --remove-existing-container \
+  --build-no-cache
+```
+
+### Apply additional features at runtime
+
+```bash
+devcontainer up \
+  --workspace-folder . \
+  --additional-features '{"ghcr.io/devcontainers/features/node:1": {}}'
+```
+
+### Install dotfiles during setup
+
+```bash
+devcontainer up \
+  --workspace-folder . \
+  --dotfiles-repository https://github.com/myuser/dotfiles.git \
+  --dotfiles-install-command install.sh
+```
+
+### Use a secrets file
+
+<Warning>
+  Never commit secrets files to source control. Add the file to your `.gitignore`.
+</Warning>
+
+```bash
+devcontainer up \
+  --workspace-folder . \
+  --secrets-file ./my-secrets.json
+```
+
+Where `my-secrets.json` contains:
+
+```json
+{
+  "NPM_TOKEN": "npm_abc123",
+  "GITHUB_TOKEN": "ghp_xyz789"
+}
+```
+
+### Use layer cache for faster builds
+
+```bash
+devcontainer up \
+  --workspace-folder . \
+  --cache-from ghcr.io/myorg/my-devcontainer:cache
+```
+
+### Stop early for prebuild scenarios
+
+<Tip>
+  Use `--prebuild` in CI pipelines to bake `onCreateCommand` output into an image layer without running post-start hooks.
+</Tip>
+
+```bash
+devcontainer up \
+  --workspace-folder . \
+  --prebuild
+```

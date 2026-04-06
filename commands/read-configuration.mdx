@@ -1,0 +1,159 @@
+---
+title: "devcontainer read-configuration"
+description: "Read and output the resolved dev container configuration."
+---
+
+The `read-configuration` command parses and resolves a `devcontainer.json` file (and any applicable image metadata), then writes the result as JSON to stdout. No container is created or started.
+
+Use this command to inspect the effective configuration before provisioning, or to integrate configuration data into tooling and scripts.
+
+## Usage
+
+```bash
+devcontainer read-configuration [options]
+```
+
+## Options
+
+### Workspace and container identification
+
+<ParamField query="--workspace-folder" type="string">
+  Workspace folder path. The `devcontainer.json` will be looked up relative to this path. If `--container-id`, `--id-label`, and `--workspace-folder` are not provided, this defaults to the current directory.
+</ParamField>
+
+<ParamField query="--container-id" type="string">
+  Id of the container to run the user commands for.
+</ParamField>
+
+<ParamField query="--id-label" type="string">
+  Id label(s) of the format `name=value`. If no `--container-id` is given the id labels will be used to look up the container. If no `--id-label` is given, one will be inferred from the `--workspace-folder` path.
+</ParamField>
+
+### Configuration
+
+<ParamField query="--config" type="string">
+  `devcontainer.json` path. The default is to use `.devcontainer/devcontainer.json` or, if that does not exist, `.devcontainer.json` in the workspace folder.
+</ParamField>
+
+<ParamField query="--override-config" type="string">
+  `devcontainer.json` path to override any `devcontainer.json` in the workspace folder (or built-in configuration). This is required when there is no `devcontainer.json` otherwise.
+</ParamField>
+
+<ParamField query="--additional-features" type="string">
+  Additional features to apply to the dev container (JSON as per `"features"` section in `devcontainer.json`).
+</ParamField>
+
+### Output options
+
+<ParamField query="--include-features-configuration" type="boolean" default="false">
+  Include features configuration.
+</ParamField>
+
+<ParamField query="--include-merged-configuration" type="boolean" default="false">
+  Include merged configuration.
+</ParamField>
+
+### Docker
+
+<ParamField query="--docker-path" type="string">
+  Docker CLI path.
+</ParamField>
+
+<ParamField query="--docker-compose-path" type="string">
+  Docker Compose CLI path.
+</ParamField>
+
+### Logging
+
+<ParamField query="--log-level" type="string" default="info">
+  Log level for the terminal log file. When set to `trace`, the log level for the log file will also be set to `trace`. Accepted values: `info`, `debug`, `trace`.
+</ParamField>
+
+<ParamField query="--log-format" type="string" default="text">
+  Log format. Accepted values: `text`, `json`.
+</ParamField>
+
+## Output format
+
+The command writes a JSON object to stdout with the following top-level fields:
+
+```json
+{
+  "configuration": { ... },
+  "workspace": { ... },
+  "featuresConfiguration": null,
+  "mergedConfiguration": null
+}
+```
+
+| Field | Description |
+|---|---|
+| `configuration` | The resolved `devcontainer.json` contents after variable substitution. |
+| `workspace` | Workspace metadata such as the resolved workspace folder path. |
+| `featuresConfiguration` | Feature resolution details. Only present when `--include-features-configuration` is set. |
+| `mergedConfiguration` | The configuration after merging image metadata from features and base images. Only present when `--include-merged-configuration` is set. |
+
+### Example output
+
+```json
+{
+  "configuration": {
+    "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+    "features": {
+      "ghcr.io/devcontainers/features/node:1": {}
+    },
+    "remoteUser": "vscode",
+    "postCreateCommand": "npm install"
+  },
+  "workspace": {
+    "workspaceFolder": "/workspaces/my-project"
+  },
+  "featuresConfiguration": null,
+  "mergedConfiguration": null
+}
+```
+
+## Examples
+
+### Read the configuration for the current workspace
+
+```bash
+devcontainer read-configuration --workspace-folder .
+```
+
+### Read configuration and include merged metadata
+
+```bash
+devcontainer read-configuration \
+  --workspace-folder . \
+  --include-merged-configuration
+```
+
+### Use a custom config file
+
+```bash
+devcontainer read-configuration \
+  --workspace-folder . \
+  --config .devcontainer/ci.devcontainer.json
+```
+
+### Extract a single field with `jq`
+
+```bash
+devcontainer read-configuration --workspace-folder . \
+  | jq '.configuration.remoteUser'
+```
+
+### Check the merged configuration including all feature contributions
+
+```bash
+devcontainer read-configuration \
+  --workspace-folder . \
+  --include-features-configuration \
+  --include-merged-configuration \
+  | jq '.mergedConfiguration'
+```
+
+<Note>
+  When a running container is identified via `--container-id` or `--id-label`, the command applies container environment variable substitution on top of the base configuration, giving you the exact values the container sees.
+</Note>

@@ -1,0 +1,182 @@
+---
+title: "Applying templates"
+description: "Apply a Dev Container Template to scaffold a new project."
+---
+
+The `devcontainer templates apply` command pulls a template artifact from an OCI registry and writes the resulting `.devcontainer/` files into your workspace. Option values you supply are substituted before the files are written; any option you omit falls back to the `default` declared in the template's manifest.
+
+## Full workflow
+
+<Steps>
+  <Step title="Browse available templates">
+    Visit [containers.dev/templates](https://containers.dev/templates) to find a template for your stack. Each listing shows the template's OCI reference (e.g. `ghcr.io/devcontainers/templates/python`), the available options, and a link to its source.
+
+    You can also inspect a template's options directly from the CLI before applying it:
+
+    ```bash
+    devcontainer templates metadata ghcr.io/devcontainers/templates/python
+    ```
+
+    The command prints the full `devcontainer-template.json` manifest as JSON, including every option name, type, default value, and description.
+  </Step>
+
+  <Step title="Apply the template">
+    Run `devcontainer templates apply` with at least `--template-id`. Pass `--template-args` to set option values and `--workspace-folder` to target a directory other than the current one.
+
+    ```bash
+    devcontainer templates apply \
+      --template-id ghcr.io/devcontainers/templates/python \
+      --template-args '{"imageVariant": "3.12"}' \
+      --workspace-folder ./my-project
+    ```
+
+    The CLI prints a JSON object listing the files it wrote:
+
+    ```json
+    {"files":["./.devcontainer/devcontainer.json"]}
+    ```
+
+    <Note>
+      If `--workspace-folder` is omitted, the template is applied to the current directory.
+    </Note>
+  </Step>
+
+  <Step title="Inspect the generated files">
+    The template scaffolds a `.devcontainer/` folder in the target workspace. For the Debian template, for example:
+
+    ```bash
+    devcontainer templates apply \
+      --template-id ghcr.io/devcontainers/templates/debian \
+      --template-args '{"imageVariant": "buster"}' \
+      --workspace-folder ./my-project
+    ```
+
+    Produces:
+
+    ```
+    my-project/
+    └── .devcontainer/
+        └── devcontainer.json
+    ```
+
+    With the contents:
+
+    ```json .devcontainer/devcontainer.json
+    {
+      "name": "Debian",
+      "image": "mcr.microsoft.com/devcontainers/base:buster"
+    }
+    ```
+  </Step>
+
+  <Step title="Start the container">
+    Once the `.devcontainer/` folder is in place, open the workspace in a Dev Container-aware tool or use the CLI directly:
+
+    ```bash
+    devcontainer up --workspace-folder ./my-project
+    ```
+  </Step>
+</Steps>
+
+## Command reference
+
+```bash
+devcontainer templates apply [options]
+```
+
+### Flags
+
+<ParamField path="--template-id" type="string" required>
+  OCI reference to the template to apply. Accepts a fully qualified reference such as `ghcr.io/devcontainers/templates/python` or `ghcr.io/devcontainers/templates/python:1`. Alias: `-t`.
+</ParamField>
+
+<ParamField path="--workspace-folder" type="string" default="current directory">
+  Path to the target workspace folder. The `.devcontainer/` files will be written here. Alias: `-w`.
+</ParamField>
+
+<ParamField path="--template-args" type="string" default="{}">
+  Template option values to substitute, provided as a JSON object. Keys map to option IDs declared in the template's `devcontainer-template.json`. Any key you omit falls back to the option's `default`. Alias: `-a`.
+</ParamField>
+
+<ParamField path="--features" type="string" default="[]">
+  Additional Features to inject into the generated `devcontainer.json`, provided as a JSON array of feature objects. Each object must have an `id` field and an optional `options` map. Alias: `-f`.
+
+  ```json
+  [
+    { "id": "ghcr.io/devcontainers/features/git:1", "options": { "version": "latest" } }
+  ]
+  ```
+</ParamField>
+
+<ParamField path="--omit-paths" type="string" default="[]">
+  JSON array of paths within the template to skip when writing files. Append `/*` to omit an entire directory. Example: `[".github/*", "Makefile"]`.
+</ParamField>
+
+<ParamField path="--tmp-dir" type="string">
+  Directory to use for temporary files during the fetch. Defaults to the system temporary directory.
+</ParamField>
+
+<ParamField path="--log-level" type="string" default="info">
+  Verbosity of log output written to stderr. One of `info`, `debug`, or `trace`.
+</ParamField>
+
+## Template options
+
+Template options are declared in the template's `devcontainer-template.json` under the `options` key. Each option has a type (`string` or `boolean`), an optional `default`, and an optional set of allowed values (`enum`) or non-binding suggestions (`proposals`).
+
+```json
+{
+  "options": {
+    "imageVariant": {
+      "type": "string",
+      "description": "Python version to use",
+      "proposals": ["3.12", "3.11", "3.10"],
+      "default": "3.12"
+    },
+    "installTools": {
+      "type": "boolean",
+      "description": "Install common development tools",
+      "default": true
+    }
+  }
+}
+```
+
+Pass all option values as a flat JSON object to `--template-args`:
+
+```bash
+devcontainer templates apply \
+  --template-id ghcr.io/devcontainers/templates/python \
+  --template-args '{"imageVariant": "3.11", "installTools": "false"}'
+```
+
+<Note>
+  All option values in `--template-args` are strings, including boolean options. Pass `"true"` or `"false"` as string values.
+</Note>
+
+Use `devcontainer templates metadata <templateId>` to print the full option schema for any published template before you apply it.
+
+## Merging with an existing devcontainer.json
+
+If your workspace already contains a `.devcontainer/devcontainer.json`, applying a template will overwrite only the files included in the template archive. To preserve specific files, use `--omit-paths` to exclude them from the apply operation.
+
+<Warning>
+  Files included in the template that share a name with existing files in your workspace will be overwritten without prompting.
+</Warning>
+
+## Adding Features at apply time
+
+Use `--features` to inject Dev Container Features into the generated configuration at the same time as you apply the template:
+
+```bash
+devcontainer templates apply \
+  --template-id ghcr.io/devcontainers/templates/python \
+  --template-args '{"imageVariant": "3.12"}' \
+  --features '[
+    { "id": "ghcr.io/devcontainers/features/git:1" },
+    { "id": "ghcr.io/devcontainers/features/docker-in-docker:2" }
+  ]' \
+  --workspace-folder .
+```
+
+The listed Features are added to the `features` field of the generated `devcontainer.json`.

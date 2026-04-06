@@ -1,0 +1,434 @@
+---
+title: "devcontainer.json properties"
+description: "Complete reference for all supported devcontainer.json properties."
+---
+
+A `devcontainer.json` file describes how to build and configure a development container. There are three mutually exclusive base configurations: image-based, Dockerfile-based, and Docker Compose-based. All three share a large set of common properties.
+
+## Base configuration
+
+Choose exactly one of the following approaches.
+
+<AccordionGroup>
+  <Accordion title="Image-based">
+    Use a pre-built Docker image as the base for your dev container.
+
+    <ResponseField name="image" type="string">
+      The name of a Docker image to use as the dev container base. Only optional when setting up an existing container as a dev container.
+
+      ```json
+      { "image": "mcr.microsoft.com/devcontainers/base:ubuntu" }
+      ```
+    </ResponseField>
+  </Accordion>
+
+  <Accordion title="Dockerfile-based">
+    Build your dev container from a Dockerfile. You can use either the top-level shorthand or the nested `build` object.
+
+    <ResponseField name="dockerFile" type="string">
+      Path to the Dockerfile, relative to the `devcontainer.json` file. Shorthand alternative to `build.dockerfile`.
+
+      ```json
+      { "dockerFile": "../Dockerfile" }
+      ```
+    </ResponseField>
+
+    <ResponseField name="context" type="string">
+      Path to the build context when using the `dockerFile` shorthand, relative to the `devcontainer.json` file.
+    </ResponseField>
+
+    <ResponseField name="build" type="object">
+      Object containing Dockerfile build settings.
+
+      <Expandable title="properties">
+        <ResponseField name="build.dockerfile" type="string" required>
+          Path to the Dockerfile, relative to the `devcontainer.json` file.
+
+          ```json
+          { "build": { "dockerfile": "Dockerfile" } }
+          ```
+        </ResponseField>
+
+        <ResponseField name="build.context" type="string">
+          Path to the build context, relative to the `devcontainer.json` file. Defaults to the directory containing `devcontainer.json`.
+        </ResponseField>
+
+        <ResponseField name="build.args" type="object">
+          Build arguments (`--build-arg`) passed to `docker build` as key-value pairs.
+
+          ```json
+          { "build": { "args": { "NODE_VERSION": "18" } } }
+          ```
+        </ResponseField>
+
+        <ResponseField name="build.target" type="string">
+          The target build stage to use when the Dockerfile contains multiple stages.
+        </ResponseField>
+
+        <ResponseField name="build.cacheFrom" type="string | string[]">
+          One or more image names to use as layer cache sources during the build.
+
+          ```json
+          { "build": { "cacheFrom": "ghcr.io/myorg/myimage:latest" } }
+          ```
+        </ResponseField>
+
+        <ResponseField name="build.options" type="string[]">
+          Additional arguments to pass to `docker build`, for example `["--add-host=host.docker.internal:host-gateway"]`.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Accordion>
+
+  <Accordion title="Docker Compose-based">
+    Use Docker Compose to orchestrate multiple containers.
+
+    <ResponseField name="dockerComposeFile" type="string | string[]" required>
+      Path or array of paths to Docker Compose files, relative to the `devcontainer.json` file.
+
+      ```json
+      { "dockerComposeFile": "docker-compose.yml" }
+      ```
+
+      ```json
+      { "dockerComposeFile": ["docker-compose.yml", "docker-compose.override.yml"] }
+      ```
+    </ResponseField>
+
+    <ResponseField name="service" type="string" required>
+      The name of the service in the Docker Compose file to use as the dev container.
+    </ResponseField>
+
+    <ResponseField name="runServices" type="string[]">
+      Additional services from the Docker Compose file to start alongside the dev container service.
+
+      ```json
+      { "runServices": ["db", "redis"] }
+      ```
+    </ResponseField>
+  </Accordion>
+</AccordionGroup>
+
+## Container identity
+
+<ResponseField name="name" type="string">
+  A display name for the dev container.
+</ResponseField>
+
+<ResponseField name="containerUser" type="string">
+  The user to run container processes as (equivalent to `--user` in `docker run`). If not set, the image's default user is used.
+</ResponseField>
+
+<ResponseField name="remoteUser" type="string">
+  The user that lifecycle scripts, remote tools, and terminal sessions run as inside the container. Defaults to `containerUser`.
+
+  <Note>This does not change which user the container process runs as — use `containerUser` for that.</Note>
+</ResponseField>
+
+<ResponseField name="updateRemoteUserUID" type="boolean">
+  When `true` (the default), the CLI updates the UID and GID of the `remoteUser` inside the container to match the local user's UID and GID. This avoids file permission issues when bind-mounting the workspace.
+</ResponseField>
+
+<ResponseField name="userEnvProbe" type='"none" | "loginInteractiveShell" | "interactiveShell" | "loginShell"'>
+  Controls how the CLI probes the container to determine the remote user's environment, particularly `PATH`. The shell invocation method determines which profile and rc files are sourced. Defaults to `loginInteractiveShell`.
+
+  | Value | Shell invocation |
+  |---|---|
+  | `none` | No shell is launched; no profile files are sourced |
+  | `loginInteractiveShell` | `bash --login -i` |
+  | `interactiveShell` | `bash -i` |
+  | `loginShell` | `bash --login` |
+
+  See [Environment variables — userEnvProbe](/reference/environment-variables#userenvprobe) for details.
+</ResponseField>
+
+## Networking and ports
+
+<ResponseField name="forwardPorts" type="(number | string)[]">
+  Ports to forward from the container to the host. Each entry is either a port number or a `"host:container"` string to map to a specific host port.
+
+  ```json
+  { "forwardPorts": [3000, "8080:80"] }
+  ```
+</ResponseField>
+
+<ResponseField name="appPort" type="number | string | (number | string)[]">
+  A port, string, or array of ports/strings to forward. Similar to `forwardPorts` but intended for the primary application port.
+</ResponseField>
+
+<ResponseField name="portsAttributes" type="object">
+  Per-port configuration. Keys are port numbers or ranges; values are `PortAttributes` objects.
+
+  <Expandable title="PortAttributes properties">
+    <ResponseField name="label" type="string">
+      A human-readable label for the port shown in tools like VS Code.
+    </ResponseField>
+
+    <ResponseField name="onAutoForward" type="string">
+      The action to take when the port is automatically forwarded. Common values: `"notify"`, `"openBrowser"`, `"openBrowserOnce"`, `"openPreview"`, `"silent"`, `"ignore"`.
+    </ResponseField>
+
+    <ResponseField name="elevateIfNeeded" type="boolean">
+      When `true`, elevates privileges if the port number requires it (ports below 1024 on Linux).
+    </ResponseField>
+  </Expandable>
+
+  ```json
+  {
+    "portsAttributes": {
+      "3000": { "label": "Application", "onAutoForward": "openBrowser" },
+      "5432": { "label": "Postgres", "onAutoForward": "silent" }
+    }
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="otherPortsAttributes" type="object">
+  Default `PortAttributes` configuration applied to any port not explicitly listed in `portsAttributes`.
+</ResponseField>
+
+## Environment
+
+<ResponseField name="containerEnv" type="Record<string, string>">
+  Environment variables set on the container itself, available to all processes. Variables are passed to `docker run` via `--env`.
+
+  ```json
+  { "containerEnv": { "MY_VARIABLE": "value" } }
+  ```
+
+  <Warning>These values are stored in image metadata. Do not use `containerEnv` for secrets.</Warning>
+</ResponseField>
+
+<ResponseField name="remoteEnv" type="Record<string, string | null>">
+  Environment variables injected by the CLI into lifecycle scripts and remote tool sessions. Supports variable substitution. Set a value to `null` to unset a variable.
+
+  ```json
+  {
+    "remoteEnv": {
+      "PATH": "${containerEnv:PATH}:/home/user/.local/bin",
+      "LOCAL_HOME": "${localEnv:HOME}"
+    }
+  }
+  ```
+
+  See [Environment variables](/reference/environment-variables) for supported substitution patterns.
+</ResponseField>
+
+## Mounts and filesystem
+
+<ResponseField name="mounts" type="(Mount | string)[]">
+  Additional mount points added to the container. Each entry is either a mount object or a Docker `--mount` string.
+
+  <Expandable title="Mount object properties">
+    <ResponseField name="type" type='"bind" | "volume"' required>
+      The mount type.
+    </ResponseField>
+
+    <ResponseField name="source" type="string">
+      The source path on the host (for bind mounts) or the volume name.
+    </ResponseField>
+
+    <ResponseField name="target" type="string" required>
+      The absolute path inside the container.
+    </ResponseField>
+
+    <ResponseField name="external" type="boolean">
+      When `true`, marks the volume as external (not managed by the dev container lifecycle).
+    </ResponseField>
+  </Expandable>
+
+  ```json
+  {
+    "mounts": [
+      {
+        "type": "bind",
+        "source": "${localEnv:HOME}/.ssh",
+        "target": "/home/user/.ssh"
+      }
+    ]
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="workspaceFolder" type="string">
+  The absolute path inside the container where the workspace is mounted. Required for Docker Compose configurations.
+</ResponseField>
+
+<ResponseField name="workspaceMount" type="string">
+  Overrides the default workspace mount. Uses Docker `--mount` string syntax. Useful when you need custom mount options.
+</ResponseField>
+
+## Container runtime
+
+<ResponseField name="runArgs" type="string[]">
+  Additional arguments passed to `docker run` when creating the container.
+
+  ```json
+  { "runArgs": ["--network=host", "--cap-add=SYS_PTRACE"] }
+  ```
+</ResponseField>
+
+<ResponseField name="overrideCommand" type="boolean">
+  When `true` (the default), the container's default command (`CMD`) is overridden with a long-running process to keep it alive. Set to `false` to use the image's built-in command.
+</ResponseField>
+
+<ResponseField name="shutdownAction" type='"none" | "stopContainer" | "stopCompose"'>
+  What happens to the container when the last client disconnects.
+
+  | Value | Behavior |
+  |---|---|
+  | `none` | Container keeps running |
+  | `stopContainer` | Container is stopped (image-based and Dockerfile-based) |
+  | `stopCompose` | All Compose services are stopped (Docker Compose only) |
+</ResponseField>
+
+<ResponseField name="init" type="boolean">
+  When `true`, runs a minimal init process (`tini`) inside the container to forward signals and reap zombie processes. Equivalent to `docker run --init`.
+</ResponseField>
+
+<ResponseField name="privileged" type="boolean">
+  When `true`, runs the container in privileged mode. Equivalent to `docker run --privileged`.
+
+  <Warning>Privileged mode grants the container nearly full host access. Use only when required.</Warning>
+</ResponseField>
+
+<ResponseField name="capAdd" type="string[]">
+  Linux capabilities to add to the container. Equivalent to `docker run --cap-add`.
+
+  ```json
+  { "capAdd": ["SYS_PTRACE"] }
+  ```
+</ResponseField>
+
+<ResponseField name="securityOpt" type="string[]">
+  Security options for the container. Equivalent to `docker run --security-opt`.
+
+  ```json
+  { "securityOpt": ["seccomp=unconfined"] }
+  ```
+</ResponseField>
+
+## Features
+
+<ResponseField name="features" type="Record<string, string | boolean | object>">
+  Dev container Features to install. Keys are Feature identifiers (OCI references, GitHub references, or local paths); values are option objects, or a shorthand string/boolean for single-option Features.
+
+  ```json
+  {
+    "features": {
+      "ghcr.io/devcontainers/features/node:1": { "version": "18" },
+      "ghcr.io/devcontainers/features/git:1": {}
+    }
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="overrideFeatureInstallOrder" type="string[]">
+  Explicitly sets the installation order for Features. Any Features not listed are installed after those that are, in an automatically determined order.
+
+  ```json
+  { "overrideFeatureInstallOrder": ["ghcr.io/devcontainers/features/common-utils"] }
+  ```
+</ResponseField>
+
+## Lifecycle commands
+
+Lifecycle commands run at specific points during the container lifecycle. Each accepts a string (shell command), an array of strings (command + arguments, without a shell), or for some hooks an object whose keys are label names and values are commands to run in parallel.
+
+<Tip>Use `waitFor` to tell the CLI which command to wait on before declaring the container ready, enabling later commands to run in the background.</Tip>
+
+<ResponseField name="initializeCommand" type="string | string[]">
+  Runs on the **host** before the container is created or started. Because it runs on the host, this command has access to host environment variables and tools but not the container.
+</ResponseField>
+
+<ResponseField name="onCreateCommand" type="string | string[]">
+  Runs inside the container after it is created for the first time. Runs once per container lifetime.
+</ResponseField>
+
+<ResponseField name="updateContentCommand" type="string | string[]">
+  Runs inside the container when the source content changes (for example, after a `git pull`). May run more than once over the container lifetime.
+</ResponseField>
+
+<ResponseField name="postCreateCommand" type="string | string[]">
+  Runs inside the container after `onCreateCommand` and `updateContentCommand` complete. Runs once per container lifetime.
+</ResponseField>
+
+<ResponseField name="postStartCommand" type="string | string[]">
+  Runs inside the container each time the container starts (not just when it is first created).
+</ResponseField>
+
+<ResponseField name="postAttachCommand" type="string | string[]">
+  Runs inside the container each time a client attaches to it.
+</ResponseField>
+
+<ResponseField name="waitFor" type='"initializeCommand" | "onCreateCommand" | "updateContentCommand" | "postCreateCommand" | "postStartCommand" | "postAttachCommand"'>
+  The lifecycle command the CLI should wait for before reporting the container as ready. Subsequent commands continue running in the background. Defaults to `updateContentCommand`.
+</ResponseField>
+
+## Host requirements
+
+The `hostRequirements` object declares minimum hardware the host must satisfy. Tools can use this to warn users or prevent container creation on under-resourced machines.
+
+<ResponseField name="hostRequirements" type="object">
+  <Expandable title="properties">
+    <ResponseField name="hostRequirements.cpus" type="number">
+      Minimum number of CPU cores required.
+    </ResponseField>
+
+    <ResponseField name="hostRequirements.memory" type="string">
+      Minimum memory required. Use a string with a unit suffix, for example `"4gb"`.
+    </ResponseField>
+
+    <ResponseField name="hostRequirements.storage" type="string">
+      Minimum storage required. Use a string with a unit suffix, for example `"32gb"`.
+    </ResponseField>
+
+    <ResponseField name="hostRequirements.gpu" type="boolean | &quot;optional&quot; | object">
+      GPU requirement. `true` requires a GPU; `"optional"` uses a GPU when available; an object specifies minimum GPU capabilities.
+
+      <Expandable title="GPU object properties">
+        <ResponseField name="cores" type="number">
+          Minimum number of GPU cores required.
+        </ResponseField>
+
+        <ResponseField name="memory" type="string">
+          Minimum GPU memory required, for example `"4gb"`.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+
+  ```json
+  {
+    "hostRequirements": {
+      "cpus": 4,
+      "memory": "8gb",
+      "storage": "32gb",
+      "gpu": { "cores": 1, "memory": "4gb" }
+    }
+  }
+  ```
+</ResponseField>
+
+## Customizations
+
+<ResponseField name="customizations" type="Record<string, any>">
+  Tool-specific configuration. Each key is a tool identifier; the value is an object defined by that tool.
+
+  The VS Code extension uses `customizations.vscode` to configure extensions and settings:
+
+  ```json
+  {
+    "customizations": {
+      "vscode": {
+        "extensions": ["dbaeumer.vscode-eslint"],
+        "settings": {
+          "editor.formatOnSave": true
+        }
+      }
+    }
+  }
+  ```
+
+  <Note>The top-level `extensions`, `settings`, and `devPort` properties are deprecated. Use `customizations.vscode` instead.</Note>
+</ResponseField>

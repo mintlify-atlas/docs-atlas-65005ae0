@@ -1,0 +1,339 @@
+---
+title: "Advanced Configuration"
+description: "GPU support, multi-container setups with Docker Compose, secrets, mounts, BuildKit caching, and lockfiles."
+---
+
+## GPU support
+
+Dev containers can request GPU access for machine learning workloads, CUDA development, or any task that benefits from hardware acceleration.
+
+### The --gpu-availability flag
+
+Pass `--gpu-availability` to `devcontainer up` to control how the CLI handles GPU requirements:
+
+| Value | Behavior |
+|---|---|
+| `"detect"` | Detect whether a GPU is available on the host and use it if present (default) |
+| `"all"` | Require a GPU; fail if none is available |
+| `"none"` | Never use a GPU, even if one is present |
+
+```bash
+devcontainer up --workspace-folder . --gpu-availability all
+```
+
+### Declaring GPU requirements in devcontainer.json
+
+Use `hostRequirements.gpu` to declare that the container needs GPU access:
+
+```json devcontainer.json
+{
+  "hostRequirements": {
+    "gpu": true
+  }
+}
+```
+
+Set `"optional"` to request a GPU when available without making it a hard requirement:
+
+```json
+{
+  "hostRequirements": {
+    "gpu": "optional"
+  }
+}
+```
+
+Specify minimum hardware with a `HostGPURequirements` object:
+
+```json
+{
+  "hostRequirements": {
+    "gpu": {
+      "cores": 4,
+      "memory": "8gb"
+    }
+  }
+}
+```
+
+---
+
+## Docker Compose
+
+Use Docker Compose when your development environment requires multiple services running together, such as a web app alongside a database or message queue.
+
+### Configuration
+
+A Docker Compose dev container requires three fields in `devcontainer.json`:
+
+```json devcontainer.json
+{
+  "name": "Full Stack App",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace"
+}
+```
+
+<AccordionGroup>
+  <Accordion title="dockerComposeFile">
+    Path to one or more Docker Compose files, resolved relative to `devcontainer.json`. Accepts a string or an array for multi-file setups.
+
+    ```json
+    {
+      "dockerComposeFile": ["docker-compose.yml", "docker-compose.override.yml"]
+    }
+    ```
+  </Accordion>
+  <Accordion title="service">
+    The name of the Compose service the CLI should attach to. This service must exist in the Compose file.
+
+    ```json
+    { "service": "app" }
+    ```
+  </Accordion>
+  <Accordion title="runServices">
+    An optional list of services to start. If omitted, all services defined in the Compose file are started.
+
+    ```json
+    { "runServices": ["app", "db"] }
+    ```
+  </Accordion>
+  <Accordion title="shutdownAction">
+    What to do when the last client disconnects. For Docker Compose, use `"stopCompose"` to stop all services.
+
+    ```json
+    { "shutdownAction": "stopCompose" }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### The --docker-compose-path flag
+
+If the `docker compose` or `docker-compose` binary is not on your `PATH`, specify its location:
+
+```bash
+devcontainer up \
+  --workspace-folder . \
+  --docker-compose-path /usr/local/bin/docker-compose
+```
+
+### Complete example
+
+```yaml docker-compose.yml
+services:
+  app:
+    build: .
+    volumes:
+      - ..:/workspace:cached
+    command: sleep infinity
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: myapp
+```
+
+```json devcontainer.json
+{
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
+  "forwardPorts": [3000, 5432],
+  "postCreateCommand": "npm install && npm run db:migrate",
+  "shutdownAction": "stopCompose"
+}
+```
+
+---
+
+## Secrets
+
+Use `--secrets-file` to supply sensitive environment variables without exposing them in `devcontainer.json` or on the command line.
+
+### File format
+
+The secrets file is a JSON object where keys are environment variable names and values are their values:
+
+```json secrets.json
+{
+  "GITHUB_TOKEN": "ghp_xxxxxxxxxxxxxxxxxxxx",
+  "NPM_TOKEN": "npm_xxxxxxxxxxxxxxxxxxxx",
+  "DATABASE_PASSWORD": "supersecret"
+}
+```
+
+### Usage
+
+```bash
+devcontainer up \
+  --workspace-folder . \
+  --secrets-file ~/.config/devcontainer/secrets.json
+```
+
+The variables are injected into the container environment and available to lifecycle scripts and the remote session.
+
+<Warning>
+  Do not commit secrets files to source control. Add them to `.gitignore` and store them outside of your project directory when possible.
+</Warning>
+
+### Secrets vs --remote-env
+
+Prefer `--secrets-file` over `--remote-env` for sensitive values. `--remote-env` values appear in shell history and process listings. The secrets file is read once by the CLI process and not logged.
+
+---
+
+## Mounts
+
+### The --mount flag
+
+Add bind mounts or volumes at container start without modifying `devcontainer.json`:
+
+```bash
+devcontainer up \
+  --workspace-folder . \
+  --mount "type=bind,source=/host/path,target=/container/path" \
+  --mount "type=volume,source=node_modules,target=/workspace/node_modules"
+```
+
+The `--mount` flag accepts the same format as `docker run --mount`. The full syntax is:
+
+```
+type=<bind|volume>,source=<source>,target=<target>[,external=<true|false>]
+```
+
+Pass `--mount` multiple times to add multiple mounts.
+
+### The mounts property in devcontainer.json
+
+Persistent mounts belong in `devcontainer.json` under the `mounts` property:
+
+```json devcontainer.json
+{
+  "mounts": [
+    "type=bind,source=${localWorkspaceFolder}/data,target=/data",
+    {
+      "type": "volume",
+      "source": "node_modules",
+      "target": "/workspace/node_modules"
+    }
+  ]
+}
+```
+
+Each entry is either a mount string or a mount object with `type`, `source`, and `target` fields.
+
+<Tip>
+  Use a named volume for `node_modules` or other dependency directories to avoid the performance penalty of bind-mounting large directory trees from the host.
+</Tip>
+
+---
+
+## BuildKit and caching
+
+BuildKit is enabled by default (`--buildkit auto`) when it is available. The following flags control build behavior for both `devcontainer up` and `devcontainer build`.
+
+### --buildkit
+
+Control whether BuildKit is used:
+
+```bash
+devcontainer build --workspace-folder . --buildkit never
+```
+
+| Value | Behavior |
+|---|---|
+| `"auto"` | Use BuildKit if available (default) |
+| `"never"` | Always use the classic Docker builder |
+
+### --cache-from
+
+Specify an image to use as a layer cache source. This is useful in CI to reuse layers from a previously built image:
+
+```bash
+devcontainer build \
+  --workspace-folder . \
+  --cache-from ghcr.io/myorg/myrepo:cache
+```
+
+Pass `--cache-from` multiple times to specify multiple cache sources.
+
+### --cache-to
+
+Export the build cache to a destination after the build. Primarily useful with BuildKit's cache backends:
+
+```bash
+devcontainer build \
+  --workspace-folder . \
+  --cache-to type=registry,ref=ghcr.io/myorg/myrepo:cache,mode=max
+```
+
+### --no-cache
+
+Build the image without using any cached layers:
+
+```bash
+devcontainer build --workspace-folder . --no-cache
+```
+
+### CI caching example
+
+```bash
+devcontainer build \
+  --workspace-folder . \
+  --cache-from ghcr.io/myorg/devcontainer:cache \
+  --cache-to type=registry,ref=ghcr.io/myorg/devcontainer:cache,mode=max \
+  --image-name ghcr.io/myorg/devcontainer:latest
+```
+
+---
+
+## Lockfiles (experimental)
+
+Lockfiles pin dev container Feature versions so your environment is reproducible across machines and over time.
+
+<Note>
+  Lockfile support is experimental. The flags are hidden and the format may change between releases.
+</Note>
+
+### Writing a lockfile
+
+Pass `--experimental-lockfile` to `devcontainer up` or `devcontainer build` to write a lockfile alongside `devcontainer.json`:
+
+```bash
+devcontainer up \
+  --workspace-folder . \
+  --experimental-lockfile
+```
+
+### Enforcing a lockfile
+
+Pass `--experimental-frozen-lockfile` to fail if the resolved Feature versions differ from those in the lockfile:
+
+```bash
+devcontainer up \
+  --workspace-folder . \
+  --experimental-frozen-lockfile
+```
+
+Use this in CI to detect when a Feature has changed unexpectedly.
+
+### Managing Feature versions
+
+Two commands help you inspect and update Feature versions:
+
+**Check for updates:**
+
+```bash
+devcontainer outdated --workspace-folder .
+```
+
+This shows the current version of each Feature alongside the latest available version.
+
+**Upgrade the lockfile:**
+
+```bash
+devcontainer upgrade --workspace-folder .
+```
+
+This resolves the latest compatible version of each Feature and rewrites the lockfile. Review the diff before committing.

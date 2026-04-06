@@ -1,0 +1,73 @@
+---
+title: "Dev Container Features"
+description: "Add tools, runtimes, and utilities to any dev container using Features."
+---
+
+Dev Container Features are self-contained, shareable units of installation code and configuration. A Feature encapsulates everything needed to install a tool, runtime, or utility into a dev container — you reference it by ID in your `devcontainer.json`, and the CLI handles the rest.
+
+Features are distributed as OCI artifacts, primarily via `ghcr.io`, and versioned using semver tags.
+
+## Using Features in devcontainer.json
+
+Add a `features` object to your `devcontainer.json`. Each key is a Feature identifier (registry path + version tag), and the value is a set of options to pass to that Feature's `install.sh`.
+
+```json devcontainer.json
+{
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  }
+}
+```
+
+<Tip>
+  Browse community-maintained Features at [containers.dev/features](https://containers.dev/features).
+</Tip>
+
+## Feature structure
+
+Every Feature lives in its own directory containing two required files:
+
+```
+src/
+└── my-feature/
+    ├── devcontainer-feature.json   # Metadata: id, version, options, description
+    └── install.sh                  # Installation script run inside the container
+```
+
+`devcontainer-feature.json` declares the Feature's identity, available options, and other metadata consumed by the CLI and the registry. `install.sh` is the script executed inside the container during the build phase.
+
+## OCI registry distribution
+
+Features are packaged as OCI artifacts and pushed to a registry such as `ghcr.io`. The Feature identifier in `devcontainer.json` is the full OCI reference:
+
+```
+ghcr.io/<owner>/<repo>/<feature-id>:<major-version>
+```
+
+A `devcontainer-collection.json` index is published alongside individual Features so tooling can enumerate all Features in a namespace.
+
+## CLI subcommands
+
+The `devcontainer features` group provides everything you need to test, package, publish, and inspect Features.
+
+<CardGroup cols={2}>
+  <Card title="Test" icon="flask-conical" href="/features/test">
+    Run the built-in test framework against your local Feature source tree.
+  </Card>
+  <Card title="Package & Publish" icon="box" href="/features/package-publish">
+    Bundle Features into OCI artifacts and push them to a registry.
+  </Card>
+  <Card title="Generate docs" icon="file-text" href="/features/generate-docs">
+    Auto-generate a `README.md` for each Feature from its metadata.
+  </Card>
+  <Card title="Info" icon="circle-info" href="/features/package-publish#inspecting-published-features">
+    Fetch manifest, tags, or dependency information for a published Feature.
+  </Card>
+  <Card title="Resolve dependencies" icon="network" href="/features/package-publish#resolving-dependencies">
+    Inspect the installation order and dependency graph for Features in a config.
+  </Card>
+</CardGroup>

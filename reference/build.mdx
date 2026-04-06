@@ -1,0 +1,135 @@
+---
+title: "devcontainer build"
+description: "Complete reference for the devcontainer build command."
+---
+
+The `devcontainer build` command builds a dev container image without starting it. On success it writes a JSON result to stdout and exits with code `0`. On failure it exits with code `1`.
+
+## Usage
+
+```bash
+devcontainer build [path] [options]
+```
+
+The optional `[path]` positional is the workspace folder path. If omitted, the current directory is used.
+
+<Note>
+  `--push` and `--output` are mutually exclusive.
+</Note>
+
+<Warning>
+  `--platform`, `--push`, `--output`, and `--cache-to` are not supported when the devcontainer.json uses `dockerComposeFile`.
+</Warning>
+
+## Options
+
+<AccordionGroup>
+
+  <Accordion title="Docker">
+    <ParamField query="docker-path" type="string">
+      Docker CLI path.
+    </ParamField>
+
+    <ParamField query="docker-compose-path" type="string">
+      Docker Compose CLI path.
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="Workspace">
+    <ParamField query="workspace-folder" type="string">
+      Workspace folder path. The devcontainer.json will be looked up relative to this path. If not provided, defaults to the current directory.
+    </ParamField>
+
+    <ParamField query="config" type="string">
+      devcontainer.json path. The default is to use `.devcontainer/devcontainer.json` or, if that does not exist, `.devcontainer.json` in the workspace folder.
+    </ParamField>
+
+    <ParamField query="user-data-folder" type="string">
+      Host path to a directory that is intended to be persisted and share state between sessions.
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="Logging">
+    <ParamField query="log-level" type="string" default="info">
+      Log level. Choices: `info`, `debug`, `trace`.
+    </ParamField>
+
+    <ParamField query="log-format" type="string" default="text">
+      Log format. Choices: `text`, `json`.
+    </ParamField>
+  </Accordion>
+
+  <Accordion title="Build">
+    <ParamField query="no-cache" type="boolean" default="false">
+      Builds the image with `--no-cache`.
+    </ParamField>
+
+    <ParamField query="image-name" type="string">
+      Image name. May be specified multiple times to apply multiple tags.
+    </ParamField>
+
+    <ParamField query="cache-from" type="string">
+      Additional image to use as potential layer cache.
+
+      May be specified multiple times.
+    </ParamField>
+
+    <ParamField query="cache-to" type="string">
+      A destination of buildx cache.
+    </ParamField>
+
+    <ParamField query="buildkit" type="string" default="auto">
+      Control whether BuildKit should be used. Choices: `auto`, `never`.
+    </ParamField>
+
+    <ParamField query="platform" type="string">
+      Set target platforms.
+    </ParamField>
+
+    <ParamField query="push" type="boolean" default="false">
+      Push to a container registry.
+    </ParamField>
+
+    <ParamField query="label" type="string">
+      Provide key and value configuration that adds metadata to an image.
+
+      May be specified multiple times.
+    </ParamField>
+
+    <ParamField query="output" type="string">
+      Overrides the default behavior to load built images into the local docker registry. Valid options are the same ones provided to the `--output` option of `docker buildx build`.
+    </ParamField>
+
+    <ParamField query="additional-features" type="string">
+      Additional features to apply to the dev container (JSON as per `"features"` section in devcontainer.json).
+    </ParamField>
+  </Accordion>
+
+</AccordionGroup>
+
+## Output
+
+All output is written to stdout as a single line of JSON.
+
+### Success
+
+```json
+{
+  "outcome": "success",
+  "imageName": ["<image-name>"]
+}
+```
+
+`imageName` is an array containing one or more image name strings, corresponding to the tags applied during the build.
+
+### Error
+
+```json
+{
+  "outcome": "error",
+  "message": "<short error message>",
+  "description": "<detailed description>"
+}
+```
+
+The process exits with code `1` on error.

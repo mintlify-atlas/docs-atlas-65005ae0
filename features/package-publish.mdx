@@ -1,0 +1,167 @@
+---
+title: "Packaging and Publishing Features"
+description: "Package and publish Dev Container Features to an OCI registry."
+---
+
+The `devcontainer features package` and `devcontainer features publish` commands bundle your Feature source into OCI artifacts and push them to a registry such as `ghcr.io`.
+
+## devcontainer-feature.json
+
+Every Feature must have a `devcontainer-feature.json` in its source directory. This file provides the metadata that drives packaging, publishing, and documentation generation.
+
+```json src/my-feature/devcontainer-feature.json
+{
+  "id": "my-feature",
+  "version": "1.0.0",
+  "name": "My Feature",
+  "description": "Installs my-tool and configures the environment.",
+  "options": {
+    "version": {
+      "type": "string",
+      "default": "latest",
+      "description": "Version of my-tool to install."
+    }
+  },
+  "installsAfter": [],
+  "customizations": {
+    "vscode": {
+      "extensions": ["my-publisher.my-extension"]
+    }
+  }
+}
+```
+
+<Note>
+  The `version` field must follow semver (e.g. `1.2.3`). The publish command uses the major version component as the primary OCI tag and also pushes patch and minor tags.
+</Note>
+
+## Publishing workflow
+
+<Steps>
+  <Step title="Authenticate with the registry">
+    Log in to `ghcr.io` (or your chosen registry) using Docker:
+
+    ```bash
+    echo $GITHUB_TOKEN | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+    ```
+
+    The publish command reads credentials from the Docker credential store. Authentication must succeed before publishing.
+  </Step>
+  <Step title="Ensure devcontainer-feature.json is complete">
+    Each Feature in `src/<FEATURE>/` must have a `devcontainer-feature.json` with at minimum an `id` and a `version`.
+
+    Features without a `version` field are skipped with a warning during publish.
+  </Step>
+  <Step title="Package the Features">
+    The `package` command creates OCI-ready tarballs in the output directory without pushing:
+
+    ```bash
+    devcontainer features package ./src --output-folder ./output
+    ```
+
+    The target can be either a `src/` folder containing multiple Features, or a path directly to a single Feature directory. A `devcontainer-collection.json` index is written to the output directory alongside the individual Feature archives.
+
+    | Flag | Alias | Default | Description |
+    |---|---|---|---|
+    | `--output-folder` | `-o` | `./output` | Directory where archives are written. Created if it does not exist. |
+    | `--force-clean-output-folder` | `-f` | `false` | Delete the output folder before packaging. |
+    | `--log-level` | — | `info` | One of `info`, `debug`, `trace`. |
+  </Step>
+  <Step title="Publish to the registry">
+    The `publish` command packages Features and pushes each one to the registry in a single step:
+
+    ```bash
+    devcontainer features publish ./src \
+      --registry ghcr.io \
+      --namespace my-org/my-features-repo
+    ```
+
+    The namespace identifies the collection. Published references take the form:
+
+    ```
+    ghcr.io/<namespace>/<feature-id>:<version>
+    ```
+
+    | Flag | Alias | Default | Description |
+    |---|---|---|---|
+    | `--registry` | `-r` | `ghcr.io` | OCI registry to publish to. |
+    | `--namespace` | `-n` | — | **Required.** Unique identifier for the collection (`<owner>/<repo>`). |
+    | `--log-level` | — | `info` | One of `info`, `debug`, `trace`. |
+
+    On success, the command outputs a JSON object mapping each Feature ID to its published digest and tags.
+  </Step>
+</Steps>
+
+<Warning>
+  If a Feature with `legacyIds` is published, the same artifact is also published under each legacy identifier to maintain backwards compatibility with older references.
+</Warning>
+
+## Inspecting published Features
+
+The `devcontainer features info` command queries a published Feature without downloading its full archive.
+
+```bash
+devcontainer features info <mode> <feature>
+```
+
+Replace `<mode>` with one of:
+
+| Mode | Description |
+|---|---|
+| `manifest` | Fetch the OCI manifest and canonical identifier. |
+| `tags` | List all published version tags. |
+| `dependencies` | Build and display the dependency graph as a Mermaid diagram. |
+| `verbose` | Return all of the above. |
+
+**Examples:**
+
+```bash
+# Show all published tags
+devcontainer features info tags ghcr.io/devcontainers/features/node
+
+# Show the OCI manifest as JSON
+devcontainer features info manifest ghcr.io/devcontainers/features/node --output-format json
+
+# Show the dependency graph
+devcontainer features info dependencies ghcr.io/devcontainers/features/node
+```
+
+Pass `--output-format json` to receive machine-readable JSON instead of formatted text.
+
+<Note>
+  If the manifest requires authentication, run `docker login` for the registry first. The info command will print `No manifest found! If this manifest requires authentication, please login.` if it cannot fetch the manifest.
+</Note>
+
+## Resolving dependencies
+
+The `devcontainer features resolve-dependencies` command reads the `devcontainer.json` in a workspace and outputs the resolved installation order for all Features, accounting for `dependsOn` relationships.
+
+```bash
+devcontainer features resolve-dependencies --workspace-folder ./my-project
+```
+
+Output includes a Mermaid dependency diagram followed by a JSON object:
+
+```json
+{
+  "installOrder": [
+    {
+      "id": "ghcr.io/devcontainers/features/common-utils@sha256:abc123...",
+      "options": {}
+    },
+    {
+      "id": "ghcr.io/devcontainers/features/node@sha256:def456...",
+      "options": { "version": "20" }
+    }
+  ]
+}
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--workspace-folder` | Current directory | Path to the workspace containing `.devcontainer.json` or `.devcontainer/devcontainer.json`. |
+| `--log-level` | `error` | One of `error`, `info`, `debug`, `trace`. |
+
+<Tip>
+  Paste the Mermaid diagram output into [mermaid.live](https://mermaid.live/) to visualize the dependency graph interactively.
+</Tip>

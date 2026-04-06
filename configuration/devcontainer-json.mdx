@@ -1,0 +1,404 @@
+---
+title: "devcontainer.json"
+description: "Configure your dev container with the devcontainer.json file."
+---
+
+The `devcontainer.json` file is the central configuration file for a dev container. It tells the CLI how to build the container, what tools to install, which ports to expose, and what commands to run at each stage of the container lifecycle.
+
+## File location
+
+The CLI looks for `devcontainer.json` in the following locations, in order:
+
+1. `.devcontainer/devcontainer.json`
+2. `.devcontainer.json`
+
+Both paths are resolved relative to the workspace folder (`--workspace-folder`).
+
+## Base configuration types
+
+Every `devcontainer.json` must use one of three base configuration types. These are mutually exclusive.
+
+<Tabs>
+  <Tab title="Image">
+    Pull a pre-built image directly from a registry.
+
+    ```json devcontainer.json
+    {
+      "name": "My Dev Container",
+      "image": "mcr.microsoft.com/devcontainers/base:ubuntu"
+    }
+    ```
+
+    Use this when you do not need to customize the image build step and an existing image meets your requirements.
+  </Tab>
+  <Tab title="Dockerfile">
+    Build a custom image from a Dockerfile.
+
+    ```json devcontainer.json
+    {
+      "name": "My Dev Container",
+      "build": {
+        "dockerfile": "Dockerfile",
+        "context": "..",
+        "args": {
+          "NODE_VERSION": "20"
+        }
+      }
+    }
+    ```
+
+    The legacy `"dockerFile"` top-level key is also supported but `"build.dockerfile"` is preferred.
+  </Tab>
+  <Tab title="Docker Compose">
+    Run against a multi-container setup defined in a Docker Compose file.
+
+    ```json devcontainer.json
+    {
+      "name": "My Dev Container",
+      "dockerComposeFile": "docker-compose.yml",
+      "service": "app",
+      "workspaceFolder": "/workspace"
+    }
+    ```
+
+    `workspaceFolder` is required when using Docker Compose.
+  </Tab>
+</Tabs>
+
+## Complete examples
+
+<AccordionGroup>
+  <Accordion title="Image-based">
+    ```json devcontainer.json
+    {
+      "name": "Node.js",
+      "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+      "features": {
+        "ghcr.io/devcontainers/features/github-cli:1": {}
+      },
+      "forwardPorts": [3000],
+      "postCreateCommand": "npm install",
+      "remoteUser": "node"
+    }
+    ```
+  </Accordion>
+  <Accordion title="Dockerfile-based">
+    ```json devcontainer.json
+    {
+      "name": "Python",
+      "build": {
+        "dockerfile": "Dockerfile",
+        "args": {
+          "PYTHON_VERSION": "3.12"
+        }
+      },
+      "features": {
+        "ghcr.io/devcontainers/features/git:1": {}
+      },
+      "forwardPorts": [8000],
+      "postCreateCommand": "pip install -r requirements.txt",
+      "containerUser": "vscode",
+      "remoteUser": "vscode"
+    }
+    ```
+  </Accordion>
+  <Accordion title="Docker Compose">
+    ```json devcontainer.json
+    {
+      "name": "Full Stack App",
+      "dockerComposeFile": "docker-compose.yml",
+      "service": "app",
+      "workspaceFolder": "/workspace",
+      "forwardPorts": [3000, 5432],
+      "postCreateCommand": "npm install",
+      "shutdownAction": "stopCompose"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Properties
+
+### Identity and image
+
+<AccordionGroup>
+  <Accordion title="name">
+    A display name for the dev container.
+
+    ```json
+    { "name": "My Project" }
+    ```
+  </Accordion>
+  <Accordion title="image">
+    The Docker image to use as the base. Only applies to image-based configurations.
+
+    ```json
+    { "image": "mcr.microsoft.com/devcontainers/base:ubuntu" }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Ports
+
+<AccordionGroup>
+  <Accordion title="forwardPorts">
+    An array of ports to forward from the container to the host. Accepts integers or `"host:container"` strings.
+
+    ```json
+    { "forwardPorts": [3000, "8080:80"] }
+    ```
+  </Accordion>
+  <Accordion title="appPort">
+    A port or list of ports to publish from the container. Unlike `forwardPorts`, these are published at container start rather than forwarded by a client tool.
+
+    ```json
+    { "appPort": [3000, "8080:80"] }
+    ```
+  </Accordion>
+  <Accordion title="portsAttributes">
+    Per-port configuration. Keys are port numbers or ranges as strings.
+
+    ```json
+    {
+      "portsAttributes": {
+        "3000": {
+          "label": "Application",
+          "onAutoForward": "notify"
+        },
+        "5432": {
+          "label": "PostgreSQL",
+          "onAutoForward": "silent"
+        }
+      }
+    }
+    ```
+
+    `onAutoForward` accepts: `"notify"`, `"openBrowser"`, `"openBrowserOnce"`, `"openPreview"`, `"silent"`, `"ignore"`.
+  </Accordion>
+</AccordionGroup>
+
+### Features
+
+<AccordionGroup>
+  <Accordion title="features">
+    A map of dev container Features to install. Keys are Feature IDs; values are option objects, a version string, or `{}` for defaults.
+
+    ```json
+    {
+      "features": {
+        "ghcr.io/devcontainers/features/git:1": {},
+        "ghcr.io/devcontainers/features/node:1": {
+          "version": "20"
+        }
+      }
+    }
+    ```
+  </Accordion>
+  <Accordion title="overrideFeatureInstallOrder">
+    Control the order in which Features are installed. Provide an array of Feature IDs. Features not listed are installed after those that are.
+
+    ```json
+    {
+      "overrideFeatureInstallOrder": [
+        "ghcr.io/devcontainers/features/common-utils",
+        "ghcr.io/devcontainers/features/node"
+      ]
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Environment variables
+
+<AccordionGroup>
+  <Accordion title="containerEnv">
+    Environment variables set inside the container at the system level. These are set before any lifecycle scripts run.
+
+    ```json
+    {
+      "containerEnv": {
+        "NODE_ENV": "development",
+        "DATABASE_URL": "postgres://localhost/mydb"
+      }
+    }
+    ```
+  </Accordion>
+  <Accordion title="remoteEnv">
+    Environment variables injected when a client (such as a terminal or editor) attaches to the container. Set a value to `null` to unset an inherited variable.
+
+    ```json
+    {
+      "remoteEnv": {
+        "PATH": "${containerEnv:PATH}:/home/vscode/.local/bin",
+        "DEBUG": null
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Users
+
+<AccordionGroup>
+  <Accordion title="containerUser">
+    The user that processes inside the container run as. Equivalent to `--user` in Docker.
+
+    ```json
+    { "containerUser": "root" }
+    ```
+  </Accordion>
+  <Accordion title="remoteUser">
+    The user that client-attached processes (terminals, lifecycle scripts) run as. Defaults to the container user.
+
+    ```json
+    { "remoteUser": "vscode" }
+    ```
+  </Accordion>
+  <Accordion title="updateRemoteUserUID">
+    When `true`, the remote user's UID and GID are updated to match the host user's. Defaults to `true`. Set to `false` when running as root.
+
+    ```json
+    { "updateRemoteUserUID": false }
+    ```
+  </Accordion>
+  <Accordion title="userEnvProbe">
+    Controls how the user's shell environment is sourced when running lifecycle commands. Accepted values:
+
+    | Value | Behavior |
+    |---|---|
+    | `"none"` | No shell sourcing |
+    | `"loginInteractiveShell"` | Login and interactive shell (default) |
+    | `"interactiveShell"` | Interactive shell only |
+    | `"loginShell"` | Login shell only |
+
+    ```json
+    { "userEnvProbe": "loginInteractiveShell" }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Container runtime
+
+<AccordionGroup>
+  <Accordion title="runArgs">
+    Additional arguments passed to `docker run` when creating the container.
+
+    ```json
+    { "runArgs": ["--network=host", "--cpus=2"] }
+    ```
+  </Accordion>
+  <Accordion title="mounts">
+    Additional mount points. Each entry is a mount string or object.
+
+    ```json
+    {
+      "mounts": [
+        "type=bind,source=${localWorkspaceFolder}/data,target=/data",
+        {
+          "type": "volume",
+          "source": "node_modules",
+          "target": "/workspace/node_modules"
+        }
+      ]
+    }
+    ```
+  </Accordion>
+  <Accordion title="workspaceFolder">
+    The path inside the container to use as the working directory. Required for Docker Compose configurations.
+
+    ```json
+    { "workspaceFolder": "/workspace" }
+    ```
+  </Accordion>
+  <Accordion title="workspaceMount">
+    Overrides the default bind mount used to mount the workspace into the container.
+
+    ```json
+    { "workspaceMount": "type=bind,source=${localWorkspaceFolder},target=/workspace,consistency=cached" }
+    ```
+  </Accordion>
+  <Accordion title="overrideCommand">
+    When `true`, overrides the container's default `CMD` with an infinite sleep so the container stays running. Defaults to `true`.
+
+    ```json
+    { "overrideCommand": false }
+    ```
+  </Accordion>
+  <Accordion title="shutdownAction">
+    What happens to the container when the last client disconnects.
+
+    - `"none"` — container keeps running
+    - `"stopContainer"` — container is stopped (default for image/Dockerfile)
+    - `"stopCompose"` — all Compose services are stopped (Docker Compose only)
+
+    ```json
+    { "shutdownAction": "stopContainer" }
+    ```
+  </Accordion>
+  <Accordion title="init, privileged, capAdd, securityOpt">
+    Low-level Linux security and init options.
+
+    ```json
+    {
+      "init": true,
+      "privileged": false,
+      "capAdd": ["SYS_PTRACE"],
+      "securityOpt": ["seccomp=unconfined"]
+    }
+    ```
+
+    - `init` — run an init process (`tini`) as PID 1
+    - `privileged` — run the container in privileged mode
+    - `capAdd` — Linux capabilities to add
+    - `securityOpt` — security options passed to `docker run`
+  </Accordion>
+</AccordionGroup>
+
+### Host requirements
+
+Declare the minimum host resources the container requires. Tools that support this can surface warnings or prevent startup when the host does not meet the requirements.
+
+```json
+{
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb",
+    "storage": "32gb",
+    "gpu": true
+  }
+}
+```
+
+`gpu` accepts `true`, `false`, `"optional"`, or an object with `cores` and `memory`:
+
+```json
+{
+  "hostRequirements": {
+    "gpu": {
+      "cores": 2,
+      "memory": "4gb"
+    }
+  }
+}
+```
+
+### Customizations
+
+Tool-specific configuration lives under `customizations`. Each key is a tool identifier; the value is that tool's configuration schema.
+
+```json
+{
+  "customizations": {
+    "vscode": {
+      "extensions": ["esbenp.prettier-vscode"],
+      "settings": {
+        "editor.formatOnSave": true
+      }
+    }
+  }
+}
+```
+
+<Note>
+  The top-level `extensions` and `settings` keys from older versions of the spec are automatically migrated to `customizations.vscode` at runtime.
+</Note>

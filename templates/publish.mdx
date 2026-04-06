@@ -1,0 +1,298 @@
+---
+title: "Publishing templates"
+description: "Package and publish Dev Container Templates to an OCI registry."
+---
+
+The `devcontainer templates publish` command packages each template in a source directory and pushes them to an OCI registry as individual artifacts. Published templates can then be applied by anyone using the `devcontainer templates apply` command.
+
+<Tip>
+  The [template-starter](https://github.com/devcontainers/template-starter) repository includes a ready-made GitHub Actions workflow that handles authentication and publishing automatically using the `devcontainers/action` action.
+</Tip>
+
+## Repository structure
+
+Organize your template source files under a `src/` directory. Each subdirectory of `src/` becomes a separate published template whose ID matches the directory name.
+
+<Tree>
+  <Tree.Folder name="src" defaultOpen>
+    <Tree.Folder name="python" defaultOpen>
+      <Tree.File name="devcontainer-template.json" />
+      <Tree.Folder name=".devcontainer" defaultOpen>
+        <Tree.File name="devcontainer.json" />
+      </Tree.Folder>
+    </Tree.Folder>
+    <Tree.Folder name="node" defaultOpen>
+      <Tree.File name="devcontainer-template.json" />
+      <Tree.Folder name=".devcontainer" defaultOpen>
+        <Tree.File name="devcontainer.json" />
+        <Tree.File name="Dockerfile" />
+      </Tree.Folder>
+    </Tree.Folder>
+  </Tree.Folder>
+  <Tree.Folder name="test" defaultOpen>
+    <Tree.Folder name="python" defaultOpen>
+      <Tree.File name="test.sh" />
+    </Tree.Folder>
+    <Tree.Folder name="node" defaultOpen>
+      <Tree.File name="test.sh" />
+    </Tree.Folder>
+  </Tree.Folder>
+</Tree>
+
+Pass the `src/` directory as the `<target>` positional argument to `devcontainer templates publish`.
+
+## devcontainer-template.json
+
+Every template directory must contain a `devcontainer-template.json` manifest. This file describes the template and declares its user-configurable options.
+
+### Required fields
+
+<ParamField path="id" type="string" required>
+  Unique identifier for the template. Must match the name of the source directory.
+</ParamField>
+
+<ParamField path="version" type="string" required>
+  Semantic version string (e.g. `"1.0.0"`). The CLI skips templates without a version field.
+</ParamField>
+
+### Optional fields
+
+<ParamField path="name" type="string">
+  Human-readable display name shown in registries and tooling.
+</ParamField>
+
+<ParamField path="description" type="string">
+  Short description of what the template configures.
+</ParamField>
+
+<ParamField path="documentationURL" type="string">
+  URL to extended documentation or the source repository.
+</ParamField>
+
+<ParamField path="licenseURL" type="string">
+  URL to the template's license.
+</ParamField>
+
+<ParamField path="publisher" type="string">
+  Name of the person or organization that maintains the template.
+</ParamField>
+
+<ParamField path="keywords" type="string[]">
+  Search keywords for registry indexing.
+</ParamField>
+
+<ParamField path="platforms" type="string[]">
+  Supported OS platforms, e.g. `["linux", "macOS", "windows"]`.
+</ParamField>
+
+<ParamField path="options" type="object">
+  Map of user-configurable option IDs to option definitions. See [template options](#template-options) below.
+</ParamField>
+
+<ParamField path="featureIds" type="string[]">
+  OCI references to Features that the template depends on.
+</ParamField>
+
+<ParamField path="optionalPaths" type="string[]">
+  Paths within the template that tools may omit when applying.
+</ParamField>
+
+### Example
+
+```json devcontainer-template.json
+{
+  "id": "python",
+  "version": "1.0.0",
+  "name": "Python 3",
+  "description": "A Python 3 development environment.",
+  "documentationURL": "https://github.com/devcontainers/templates/tree/main/src/python",
+  "licenseURL": "https://github.com/devcontainers/templates/blob/main/LICENSE",
+  "publisher": "Microsoft Corporation",
+  "keywords": ["python", "django", "flask"],
+  "platforms": ["linux"],
+  "options": {
+    "imageVariant": {
+      "type": "string",
+      "description": "Python version (use -bullseye variants for older systems)",
+      "proposals": ["3.12", "3.11", "3.10", "3.12-bullseye", "3.11-bullseye"],
+      "default": "3.12"
+    }
+  }
+}
+```
+
+### Template options
+
+Each key in the `options` object maps to a configurable value that is substituted into the `.devcontainer/` files when a user applies the template.
+
+<AccordionGroup>
+  <Accordion title="String option">
+    ```json
+    "imageVariant": {
+      "type": "string",
+      "description": "Python version to use",
+      "proposals": ["3.12", "3.11", "3.10"],
+      "default": "3.12"
+    }
+    ```
+    Use `proposals` for non-binding suggestions or `enum` to restrict to a fixed set of values.
+  </Accordion>
+  <Accordion title="Boolean option">
+    ```json
+    "installTools": {
+      "type": "boolean",
+      "description": "Install common development tools",
+      "default": true
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Full publish workflow
+
+<Steps>
+  <Step title="Authenticate with the registry">
+    Publishing requires write access to the target OCI registry. For GitHub Container Registry, provide a Personal Access Token with `write:packages` scope.
+
+    <CodeGroup>
+
+    ```bash docker login
+    echo $CR_PAT | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
+    ```
+
+    ```bash environment variable
+    export GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxx"
+    ```
+
+    </CodeGroup>
+
+    The CLI supports two authentication methods:
+
+    - **`~/.docker/config.json`** — written by `docker login`. Note that OS-specific credential helpers (such as the Docker Desktop credential helper) are not currently recognized.
+    - **`DEVCONTAINERS_OCI_AUTH` environment variable** — a comma-separated list of `service|user|token` tuples:
+      ```
+      DEVCONTAINERS_OCI_AUTH=ghcr.io|myuser|ghp_token123
+      ```
+  </Step>
+
+  <Step title="Organize the source directory">
+    Make sure each template has a `devcontainer-template.json` with a `version` field and a `.devcontainer/devcontainer.json`. The directory name is used as the template ID.
+
+    ```
+    src/
+    ├── python/
+    │   ├── devcontainer-template.json
+    │   └── .devcontainer/
+    │       └── devcontainer.json
+    └── node/
+        ├── devcontainer-template.json
+        └── .devcontainer/
+            ├── devcontainer.json
+            └── Dockerfile
+    ```
+  </Step>
+
+  <Step title="Run devcontainer templates publish">
+    Pass the source directory as the positional `<target>` argument along with `--registry` and `--namespace`:
+
+    ```bash
+    GITHUB_TOKEN="$CR_PAT" devcontainer templates publish \
+      --registry ghcr.io \
+      --namespace my-org/templates \
+      ./src
+    ```
+
+    The CLI packages each template, pushes it to the registry under `<registry>/<namespace>/<id>`, and also publishes a collection index artifact. It prints a JSON summary of every template that was published.
+
+    <Note>
+      The CLI skips any template whose `devcontainer-template.json` does not contain a `version` field and logs a warning.
+    </Note>
+  </Step>
+
+  <Step title="Verify the published template">
+    Use `devcontainer templates metadata` to confirm that the manifest is reachable and contains the expected metadata:
+
+    ```bash
+    devcontainer templates metadata ghcr.io/my-org/templates/python
+    ```
+
+    The output is the full `devcontainer-template.json` content as parsed from the OCI manifest annotations.
+  </Step>
+
+  <Step title="Apply the published template">
+    Once published, anyone can apply the template using its OCI reference:
+
+    ```bash
+    devcontainer templates apply \
+      --template-id ghcr.io/my-org/templates/python \
+      --template-args '{"imageVariant": "3.12"}' \
+      --workspace-folder .
+    ```
+  </Step>
+</Steps>
+
+## Command reference
+
+```bash
+devcontainer templates publish <target> [options]
+```
+
+### Arguments
+
+<ParamField path="target" type="string" required>
+  Path to the directory containing template source subdirectories (typically `./src`).
+</ParamField>
+
+### Flags
+
+<ParamField path="--registry" type="string" required>
+  Hostname of the OCI registry to publish to, e.g. `ghcr.io`. Alias: `-r`.
+</ParamField>
+
+<ParamField path="--namespace" type="string" required>
+  Registry namespace (path prefix) under which templates are published, e.g. `my-org/templates`. Alias: `-n`.
+</ParamField>
+
+<ParamField path="--log-level" type="string" default="info">
+  Verbosity of log output written to stderr. One of `info`, `debug`, or `trace`.
+</ParamField>
+
+## Versioning
+
+Templates use [semantic versioning](https://semver.org/). The version in `devcontainer-template.json` controls which tags are pushed to the registry. For a template at version `1.2.3`, the CLI publishes the following tags:
+
+- `1.2.3` (exact version)
+- `1.2` (minor alias)
+- `1` (major alias)
+- `latest`
+
+Increment the version in `devcontainer-template.json` before each publish to release a new version.
+
+## Generating documentation
+
+The `devcontainer templates generate-docs` command reads all `devcontainer-template.json` files in the source directory and writes a `README.md` for each template, documenting its options in a standard format.
+
+```bash
+devcontainer templates generate-docs \
+  --project-folder . \
+  --github-owner my-org \
+  --github-repo my-templates
+```
+
+### Flags
+
+<ParamField path="--project-folder" type="string" default=".">
+  Root of the project containing `src/` and `test/` subdirectories. Alias: `-p`.
+</ParamField>
+
+<ParamField path="--github-owner" type="string">
+  GitHub owner used to construct source links in the generated documentation.
+</ParamField>
+
+<ParamField path="--github-repo" type="string">
+  GitHub repository name used to construct source links in the generated documentation.
+</ParamField>
+
+<Tip>
+  Run `generate-docs` as part of your CI pipeline before publishing so that each template always has up-to-date documentation committed alongside the source.
+</Tip>
